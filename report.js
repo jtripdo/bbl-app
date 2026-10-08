@@ -22,7 +22,7 @@ export async function sendReport(title,key,items,checks){
   await post(title+' report — '+dlabel(key),message);
 }
 
-export async function sendParReport(by,entries){
+export async function sendParReport(by,entries,label='Par Sheet'){
   const now=new Date();
   const when=now.toLocaleTimeString([], {hour:'numeric',minute:'2-digit'});
   const day=dlabel(dstr(now));
@@ -31,7 +31,7 @@ export async function sendParReport(by,entries){
   const miss=entries.filter(e=>e.onHand===null);
   const bySec={};
   need.forEach(e=>{(bySec[e.section]=bySec[e.section]||[]).push(e);});
-  let m='Par Sheet — '+day+'\nSubmitted by: '+by+' at '+when+'\n\n';
+  let m=label+' — '+day+'\nSubmitted by: '+by+' at '+when+'\n\n';
   m+='NEED ('+need.length+' item'+(need.length===1?'':'s')+')\n';
   if(!need.length)m+='Nothing needed. Everything counted is at or above par.\n';
   Object.keys(bySec).forEach(s=>{
@@ -40,6 +40,6 @@ export async function sendParReport(by,entries){
   });
   if(ok.length){m+='\nAT OR ABOVE PAR ('+ok.length+')\n';ok.forEach(e=>{m+='✓ '+e.item+': have '+fm(e.onHand)+', par '+fm(e.par)+' '+e.unit+'\n';});}
   if(miss.length){m+='\nNOT COUNTED ('+miss.length+')\n';miss.forEach(e=>{m+='? '+e.item+'\n';});}
-  await post('Par Sheet — '+day+' — '+by,m);
+  await post(label+' — '+day+' — '+by,m);
 }
 // END
