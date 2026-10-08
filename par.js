@@ -1,4 +1,5 @@
 import {db,S,$,esc,sub,fmt,dd,setView,topbar,collection,doc,addDoc,updateDoc,onSnapshot,query,orderBy,limit,serverTimestamp} from './core.js';
+import {icon} from './icons.js';
 
 export function showPar(){
   setView(topbar('Par Sheet')+`<div><button class="btn ghost sm" data-go="parhist">Past sheets</button></div><div id="pb"></div><button class="btn full" id="pSub" style="display:none">Submit Par Sheet</button>
@@ -52,7 +53,7 @@ export function showPar(){
     const miss=entries.filter(x=>x.onHand===null).length;
     if(miss&&!confirm(miss+' item(s) have no count entered. Submit anyway?'))return;
     addDoc(collection(db,'parSheets'),{by:S.me,at:serverTimestamp(),entries}).catch(()=>alert('Could not save the par sheet. Please try again.'));
-    setView(topbar('Par Sheet')+`<div class="center"><h2>✅ Submitted</h2><p class="mut">Saved under ${esc(S.me)}.</p><button class="btn" data-go="dash">Back to home</button> <button class="btn ghost" data-go="parhist">Past sheets</button></div>`);
+    setView(topbar('Par Sheet')+`<div class="center"><h2 class="okc"><span class="ib">${icon('check',28)} Submitted</span></h2><p class="mut">Saved under ${esc(S.me)}.</p><button class="btn" data-go="dash">Back to home</button> <button class="btn ghost" data-go="parhist">Past sheets</button></div>`);
   };
 }
 
