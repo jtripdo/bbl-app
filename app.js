@@ -5,6 +5,7 @@ import {showChat,showNeeds} from './team.js';
 import {showEvents} from './events.js';
 import {showToday} from './today.js';
 import {showPeople} from './people.js';
+import {icon} from './icons.js';
 
 const cur={v:'who'};
 
@@ -17,8 +18,8 @@ function showWho(){
 }
 
 function showDash(){
-  const tiles=[['par','📦','Par Sheets'],['opening','☀️','Opening'],['closing','🌙','Closing'],['cleaning','🧽','Cleaning'],['prep','🔪','Prep Sheet'],['chat','💬','Team Chat'],['needs','🛒','Needs & Wants'],['events','📅','Events'],['people','👥','Team']];
-  setView(`<p class="center mut">${new Date().toLocaleDateString([], {weekday:'long',month:'long',day:'numeric'})}</p><div class="grid"><button class="tile wide" data-go="today"><span>📋</span>Today</button>${tiles.map(t=>`<button class="tile" data-go="${t[0]}"><span>${t[1]}</span>${t[2]}</button>`).join('')}</div>`);
+  const tiles=[['par','box','Par Sheets'],['opening','sun','Opening'],['closing','moon','Closing'],['cleaning','sparkles','Cleaning'],['prep','chef','Prep Sheet'],['chat','chat','Team Chat'],['needs','cart','Needs & Wants'],['events','calendar','Events'],['people','users','Team']];
+  setView(`<p class="center mut">${new Date().toLocaleDateString([], {weekday:'long',month:'long',day:'numeric'})}</p><div class="grid"><button class="tile wide" data-go="today"><span>${icon('today',24)}</span>Today</button>${tiles.map(t=>`<button class="tile" data-go="${t[0]}"><span>${icon(t[1],26)}</span>${t[2]}</button>`).join('')}</div>`);
 }
 
 function go(v,arg,title){
