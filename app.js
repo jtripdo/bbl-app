@@ -5,7 +5,9 @@ import {showChat,showNeeds} from './team.js';
 import {showEvents} from './events.js';
 import {showToday} from './today.js';
 import {showPeople} from './people.js';
-import {icon} from './icons.js';
+import {showMealPrep,showMenu,ic} from './mealprep.js';
+import {showRecipes} from './recipes.js';
+import {showMpPar,showMpParHist} from './mppar.js';
 
 const cur={v:'who'};
 
@@ -18,8 +20,8 @@ function showWho(){
 }
 
 function showDash(){
-  const tiles=[['par','box','Par Sheets'],['opening','sun','Opening'],['closing','moon','Closing'],['cleaning','sparkles','Cleaning'],['prep','chef','Prep Sheet'],['chat','chat','Team Chat'],['needs','cart','Needs & Wants'],['events','calendar','Events'],['people','users','Team']];
-  setView(`<p class="center mut">${new Date().toLocaleDateString([], {weekday:'long',month:'long',day:'numeric'})}</p><div class="grid"><button class="tile wide" data-go="today"><span>${icon('today',24)}</span>Today</button>${tiles.map(t=>`<button class="tile" data-go="${t[0]}"><span>${icon(t[1],26)}</span>${t[2]}</button>`).join('')}</div>`);
+  const tiles=[['par','box','Par Sheets'],['opening','sun','Opening'],['closing','moon','Closing'],['cleaning','sparkles','Cleaning'],['prep','chef','Prep Sheet'],['mealprep','utensils','Meal Prep'],['chat','chat','Team Chat'],['needs','cart','Needs & Wants'],['events','calendar','Events'],['people','users','Team']];
+  setView(`<p class="center mut">${new Date().toLocaleDateString([], {weekday:'long',month:'long',day:'numeric'})}</p><div class="grid"><button class="tile wide" data-go="today"><span>${ic('today',24)}</span>Today</button>${tiles.map(t=>`<button class="tile" data-go="${t[0]}"><span>${ic(t[1],26)}</span>${t[2]}</button>`).join('')}</div>`);
 }
 
 function go(v,arg,title){
@@ -29,6 +31,7 @@ function go(v,arg,title){
   renderBar();
   const views={
     who:showWho,dash:showDash,today:showToday,people:showPeople,par:showPar,parhist:showParHist,
+    mealprep:showMealPrep,mpmenu:showMenu,mprecipes:showRecipes,mppar:showMpPar,mpparhist:showMpParHist,
     opening:()=>showList('opening','Opening Checklist',{note:'This list resets every day.'}),
     closing:()=>showList('closing','Closing Checklist',{note:'This list resets every day.'}),
     cleaning:()=>showList('cleaning','Cleaning List',{note:'This list resets every day.'}),
