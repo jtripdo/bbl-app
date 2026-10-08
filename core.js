@@ -16,16 +16,15 @@ try{_db=initializeFirestore(app,{localCache:persistentLocalCache({tabManager:per
 catch(e){_db=getFirestore(app);}
 export const db=_db;
 
-// ===== TEAM NAMES (edit this line to add or remove people) =====
-export const TEAM=["Joe D.","Noel C.","Bernard S."];
-// ================================================================
+// Only used the very first time, to fill the team list. After that, use the Team tile in the app.
+export const DEFAULT_TEAM=["Joe D.","Noel C.","Bernard S."];
 
-export const S={me:null,subs:[]};
+export const S={me:null,subs:[],team:[]};
 try{S.me=localStorage.getItem('bblName');}catch(e){}
-if(S.me&&!TEAM.includes(S.me))S.me=null;
 
 export const $=s=>document.querySelector(s);
 export const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+export const slug=n=>String(n).toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
 export const sub=u=>S.subs.push(u);
 export const clearSubs=()=>{S.subs.forEach(u=>u());S.subs=[];};
 export const dstr=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
