@@ -1,28 +1,33 @@
-import {S,TEAM,$,esc,clearSubs,today,setView} from './core.js';
+import {db,S,$,esc,clearSubs,today,setView,DEFAULT_TEAM,slug,collection,doc,setDoc,onSnapshot,serverTimestamp} from './core.js';
 import {showList} from './list.js';
 import {showPar,showParHist} from './par.js';
 import {showChat,showNeeds} from './team.js';
 import {showEvents} from './events.js';
+import {showToday} from './today.js';
+import {showPeople} from './people.js';
+
+const cur={v:'who'};
 
 function renderBar(){
   $('#bar').innerHTML=S.me?`<span>Working as <b>${esc(S.me)}</b></span><button class="link" data-go="who">Switch</button>`:'';
 }
 
 function showWho(){
-  setView(`<h2 class="center">Who's working?</h2>${TEAM.map(n=>`<button class="big" data-who="${esc(n)}">${esc(n)}</button>`).join('')}`);
+  setView(`<h2 class="center">Who's working?</h2>`+(S.team.length?S.team.map(n=>`<button class="big" data-who="${esc(n)}">${esc(n)}</button>`).join(''):'<p class="mut center">Loading your team...</p>'));
 }
 
 function showDash(){
-  const tiles=[['par','📦','Par Sheets'],['opening','☀️','Opening'],['closing','🌙','Closing'],['cleaning','🧽','Cleaning'],['prep','🔪','Prep Sheet'],['chat','💬','Team Chat'],['needs','🛒','Needs & Wants'],['events','📅','Events']];
-  setView(`<p class="center mut">${new Date().toLocaleDateString([], {weekday:'long',month:'long',day:'numeric'})}</p><div class="grid">${tiles.map(t=>`<button class="tile" data-go="${t[0]}"><span>${t[1]}</span>${t[2]}</button>`).join('')}</div>`);
+  const tiles=[['par','📦','Par Sheets'],['opening','☀️','Opening'],['closing','🌙','Closing'],['cleaning','🧽','Cleaning'],['prep','🔪','Prep Sheet'],['chat','💬','Team Chat'],['needs','🛒','Needs & Wants'],['events','📅','Events'],['people','👥','Team']];
+  setView(`<p class="center mut">${new Date().toLocaleDateString([], {weekday:'long',month:'long',day:'numeric'})}</p><div class="grid"><button class="tile wide" data-go="today"><span>📋</span>Today</button>${tiles.map(t=>`<button class="tile" data-go="${t[0]}"><span>${t[1]}</span>${t[2]}</button>`).join('')}</div>`);
 }
 
 function go(v,arg,title){
   clearSubs();
   if(!S.me&&v!=='who')v='who';
+  cur.v=v;
   renderBar();
   const views={
-    who:showWho,dash:showDash,par:showPar,parhist:showParHist,
+    who:showWho,dash:showDash,today:showToday,people:showPeople,par:showPar,parhist:showParHist,
     opening:()=>showList('opening','Opening Checklist',{note:'This list resets every day.'}),
     closing:()=>showList('closing','Closing Checklist',{note:'This list resets every day.'}),
     cleaning:()=>showList('cleaning','Cleaning List',{note:'This list resets every day.'}),
@@ -35,10 +40,28 @@ function go(v,arg,title){
 
 document.addEventListener('click',e=>{
   const w=e.target.closest('[data-who]');
-  if(w){S.me=w.dataset.who;try{localStorage.setItem('bblName',S.me);}catch(x){}go('dash');return;}
+  if(w){S.me=w.dataset.who;try{localStorage.setItem('bblName',S.me);}catch(x){}go('today');return;}
   const t=e.target.closest('[data-go]');
   if(t)go(t.dataset.go,t.dataset.arg,t.dataset.title);
 });
 
-go(S.me?'dash':'who');
+// Keeps the team list up to date, and fills it with the starting names the very first time
+let seeded=false;
+onSnapshot(collection(db,'team'),{includeMetadataChanges:true},snap=>{
+  if(snap.empty){
+    if(!snap.metadata.fromCache&&!seeded){
+      seeded=true;
+      DEFAULT_TEAM.forEach(n=>setDoc(doc(db,'team',slug(n)),{name:n,active:true,at:serverTimestamp()}));
+    }
+    return;
+  }
+  S.team=snap.docs.map(d=>d.data()).filter(p=>p.active!==false).map(p=>p.name).sort((a,b)=>a.localeCompare(b));
+  if(S.me&&S.team.length&&!S.team.includes(S.me)){
+    S.me=null;try{localStorage.removeItem('bblName');}catch(x){}
+    go('who');return;
+  }
+  if(cur.v==='who')showWho();
+});
+
+go(S.me?'today':'who');
 // END
