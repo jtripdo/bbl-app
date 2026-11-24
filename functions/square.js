@@ -98,17 +98,32 @@ async function completeFulfillments(orderId) {
 }
 
 // Confirms a webhook really came from Square.
+// Checks the URL you saved and the function's real URL, ignoring stray
+// spaces or capital letters added by autocorrect.
 function verifySignature(rawBody, signature) {
-  const key = process.env.SQUARE_WEBHOOK_SIGNATURE_KEY;
-  const url = process.env.SQUARE_WEBHOOK_URL;
-  if (!key || !url || !signature || !rawBody) return false;
-  const expected = crypto
-    .createHmac("sha256", key)
-    .update(url + rawBody.toString("utf8"))
-    .digest("base64");
-  const a = Buffer.from(expected);
+  const key = (process.env.SQUARE_WEBHOOK_SIGNATURE_KEY || "").trim();
+  const saved = (process.env.SQUARE_WEBHOOK_URL || "").trim();
+  const project = process.env.GCLOUD_PROJECT || process.env.GCP_PROJECT || "";
+  const real = project ? `https://us-central1-${project}.cloudfunctions.net/squareWebhook` : "";
+  const fixed = saved.replace(/^https?:\/\/[^/]+/i, (m) => m.toLowerCase());
+  const urls = [...new Set([saved, fixed, real].filter(Boolean))];
+  const info = {
+    hasKey: !!key,
+    hasSignature: !!signature,
+    savedUrlMatchesReal: saved === real,
+    matched: "",
+  };
+  if (!key || !signature || !rawBody) return { ok: false, info };
+  const body = rawBody.toString("utf8");
   const b = Buffer.from(String(signature));
-  return a.length === b.length && crypto.timingSafeEqual(a, b);
+  for (const url of urls) {
+    const a = Buffer.from(crypto.createHmac("sha256", key).update(url + body).digest("base64"));
+    if (a.length === b.length && crypto.timingSafeEqual(a, b)) {
+      info.matched = url === saved ? "saved URL" : url === real ? "real URL" : "fixed URL";
+      return { ok: true, info };
+    }
+  }
+  return { ok: false, info };
 }
 
 module.exports = {

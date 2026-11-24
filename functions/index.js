@@ -29,11 +29,19 @@ function findOrderId(event) {
 exports.squareWebhook = onRequest({ minInstances: 1 }, async (req, res) => {
   const webhookAt = new Date().toISOString();
   if (req.method !== "POST") return res.status(405).send("POST only");
-  if (!sq.verifySignature(req.rawBody, req.get("x-square-hmacsha256-signature"))) {
-    logger.warn("Webhook rejected: check SQUARE_WEBHOOK_SIGNATURE_KEY and SQUARE_WEBHOOK_URL secrets");
+  const check = sq.verifySignature(req.rawBody, req.get("x-square-hmacsha256-signature"));
+  const orderId = findOrderId(req.body);
+  // Last webhook result, for troubleshooting (no secrets stored).
+  db.collection("kdsOrders").doc("_webhookDebug").set({
+    at: webhookAt,
+    eventType: (req.body && req.body.type) || "",
+    accepted: check.ok,
+    ...check.info,
+  }).catch(() => {});
+  if (!check.ok) {
+    logger.warn("Webhook rejected", check.info);
     return res.status(403).send("bad signature");
   }
-  const orderId = findOrderId(req.body);
   if (!orderId) return res.status(200).send("ignored");
   try {
     await syncOrder(db, await sq.getOrder(orderId), {
