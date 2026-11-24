@@ -38,7 +38,20 @@ jobs:
       - name: Sign in to Google
         env:
           SA_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-        run: printf '%s' "$SA_JSON" > "$RUNNER_TEMP/sa.json"
+        run: |
+          printf '%s' "$SA_JSON" > "$RUNNER_TEMP/sa.json"
+          node -e '
+            const fs = require("fs");
+            const raw = fs.readFileSync(process.argv[1], "utf8");
+            console.log("Key length:", raw.length, "characters");
+            if (!raw.trim()) { console.error("::error::FIREBASE_SERVICE_ACCOUNT secret is empty"); process.exit(1); }
+            if (/[“”‘’]/.test(raw)) console.error("::warning::Key contains curly quotes (iPhone smart punctuation)");
+            let k;
+            try { k = JSON.parse(raw); } catch (e) { console.error("::error::Key is not valid JSON (" + e.message + "). Starts with: " + JSON.stringify(raw.slice(0, 12)) + " ends with: " + JSON.stringify(raw.slice(-12))); process.exit(1); }
+            const missing = ["type", "project_id", "private_key", "client_email"].filter((f) => !k[f]);
+            if (missing.length) { console.error("::error::Key is missing: " + missing.join(", ")); process.exit(1); }
+            console.log("Key OK. type:", k.type, "| project:", k.project_id, "| account:", k.client_email);
+          ' "$RUNNER_TEMP/sa.json"
 
       - name: Deploy to Firebase
         env:
