@@ -8,6 +8,7 @@ const { getFirestore, FieldValue } = require("firebase-admin/firestore");
 
 const sq = require("./square");
 const { syncOrder } = require("./tickets");
+const kiosk = require("./kiosk");
 
 initializeApp();
 const db = getFirestore();
@@ -107,5 +108,59 @@ exports.kdsBackupSync = onSchedule({ schedule: "every 1 minutes", timeoutSeconds
     } catch (err) {
       logger.error("Backup sync failed", { orderId: order.id, err: err.message });
     }
+  }
+});
+
+// 5) Kiosk: menu for one location.
+async function checkLocation(id) {
+  const locs = await sq.getLocations();
+  return typeof id === "string" && locs.some((l) => l.id === id);
+}
+
+exports.kioskMenu = onRequest({ cors: true }, async (req, res) => {
+  try {
+    const loc = String(req.query.loc || "");
+    if (!(await checkLocation(loc))) return res.status(400).json({ error: "Unknown location" });
+    res.set("Cache-Control", "no-store");
+    res.json(await kiosk.getMenu(loc));
+  } catch (err) {
+    logger.error("Kiosk menu failed", { err: err.message });
+    res.status(500).json({ error: "Menu is unavailable right now." });
+  }
+});
+
+// 6) Kiosk: price check (with tax) and payment.
+exports.kioskCheckout = onRequest({ cors: true }, async (req, res) => {
+  if (req.method !== "POST") return res.status(405).json({ error: "POST only" });
+  const b = req.body || {};
+  try {
+    if (!(await checkLocation(b.locationId))) throw new kiosk.UserError("This kiosk isn't set up yet.");
+    if (b.action === "quote") return res.json(await kiosk.quote(b.locationId, b.cart));
+    if (b.action === "pay") {
+      const result = await kiosk.checkout({
+        locationId: b.locationId,
+        name: b.name,
+        cart: b.cart,
+        sourceId: b.sourceId,
+        tip: b.tip,
+        key: b.key,
+      });
+      return res.json({ ok: true, ...result });
+    }
+    if (b.action === "link") {
+      return res.json(await kiosk.paymentLink({
+        locationId: b.locationId, name: b.name, cart: b.cart, key: b.key,
+      }));
+    }
+    if (b.action === "status") return res.json(await kiosk.linkStatus(b.orderId));
+    if (b.action === "cancel") {
+      await kiosk.cancelLink(b.linkId);
+      return res.json({ ok: true });
+    }
+    return res.status(400).json({ error: "Unknown action" });
+  } catch (err) {
+    if (err instanceof kiosk.UserError) return res.status(400).json({ error: err.message });
+    logger.error("Kiosk checkout failed", { action: b.action, err: err.message });
+    return res.status(500).json({ error: "Something went wrong. Please ask a team member for help." });
   }
 });

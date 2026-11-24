@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="BBL Order">
+  <meta name="theme-color" content="#0f0f10">
+  <title>Order | Buttermilk Biscuit Lab</title>
+  <link rel="stylesheet" href="kiosk.css">
+</head>
+<body>
+  <!-- Staff setup -->
+  <section id="setup" class="screen center">
+    <div class="box">
+      <h1>Kiosk setup</h1>
+      <label for="locSelect">Which location is this kiosk at?</label>
+      <select id="locSelect"><option value="">Loading locations…</option></select>
+      <button id="setupStart" class="primary big">Start kiosk</button>
+      <p class="muted">To come back here later, press and hold the logo on the start screen for 3 seconds.</p>
+    </div>
+  </section>
+
+  <!-- Start screen -->
+  <section id="attract" class="screen center hide">
+    <img id="attractLogo" class="attract-logo" alt="Buttermilk Biscuit Lab">
+    <h1 class="attract-title">Order here</h1>
+    <button id="startOrder" class="primary huge">Tap to start</button>
+    <p id="attractMsg" class="muted"></p>
+  </section>
+
+  <!-- Menu -->
+  <section id="menu" class="screen hide">
+    <header class="top">
+      <img class="logo" id="menuLogo" alt="">
+      <nav id="cats" class="cats"></nav>
+      <button id="cancelOrder" class="ghost">Start over</button>
+    </header>
+    <main id="items" class="items"></main>
+    <footer id="cartBar" class="cartbar hide">
+      <button id="openCart" class="primary big"></button>
+    </footer>
+  </section>
+
+  <!-- Item options -->
+  <div id="sheet" class="overlay hide">
+    <div class="sheet" id="sheetBody"></div>
+  </div>
+
+  <!-- Cart -->
+  <section id="cart" class="screen hide">
+    <header class="top">
+      <button id="backToMenu" class="ghost">‹ Add more</button>
+      <h2>Your order</h2>
+      <span></span>
+    </header>
+    <main id="cartLines" class="panel"></main>
+    <footer class="cartbar">
+      <button id="toCheckout" class="primary big">Checkout</button>
+    </footer>
+  </section>
+
+  <!-- Checkout -->
+  <section id="checkout" class="screen hide">
+    <header class="top">
+      <button id="backToCart" class="ghost">‹ Back</button>
+      <h2>Checkout</h2>
+      <span></span>
+    </header>
+    <main class="panel">
+      <label for="custName">Name for your order</label>
+      <input id="custName" maxlength="30" autocomplete="off" autocorrect="off" placeholder="Your first name">
+      <div id="totals" class="totals"></div>
+      <div class="tip-label">Add a tip?</div>
+      <div id="tips" class="tips"></div>
+      <div id="cardBox" class="cardbox"></div>
+      <p id="payError" class="error"></p>
+    </main>
+    <footer class="cartbar">
+      <button id="payBtn" class="primary big">Pay</button>
+      <button id="phonePayBtn" class="phonepay big">Apple Pay or Google Pay on your phone</button>
+    </footer>
+  </section>
+
+  <!-- Pay on your phone (QR code) -->
+  <section id="qr" class="screen center hide">
+    <h1>Scan to pay on your phone</h1>
+    <p class="muted">Apple Pay, Google Pay, Cash App or card</p>
+    <div id="qrCode" class="qrcode"></div>
+    <p id="qrTotal" class="qr-total"></p>
+    <p id="qrMsg" class="muted">Waiting for payment…</p>
+    <button id="qrCancel" class="ghost">Cancel and go back</button>
+  </section>
+
+  <!-- Done -->
+  <section id="done" class="screen center hide">
+    <div class="check">✓</div>
+    <h1 id="doneTitle">Thank you!</h1>
+    <p id="doneOrder" class="done-num"></p>
+    <p class="muted">We'll call your name when it's ready.</p>
+    <button id="doneBtn" class="primary big">Done</button>
+  </section>
+
+  <!-- Still there? -->
+  <div id="idle" class="overlay hide">
+    <div class="sheet small center">
+      <h2>Still there?</h2>
+      <p class="muted">Starting over in <span id="idleCount">15</span> seconds.</p>
+      <button id="idleStay" class="primary big">I'm still ordering</button>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+  <script type="module" src="kiosk.js"></script>
+</body>
+</html>
