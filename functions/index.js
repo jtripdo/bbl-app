@@ -1,0 +1,98 @@
+// BBL kitchen display: Square -> Firebase -> kds.html
+const { onRequest } = require("firebase-functions/v2/https");
+const { onSchedule } = require("firebase-functions/v2/scheduler");
+const { setGlobalOptions } = require("firebase-functions/v2");
+const logger = require("firebase-functions/logger");
+const { initializeApp } = require("firebase-admin/app");
+const { getFirestore, FieldValue } = require("firebase-admin/firestore");
+
+const sq = require("./square");
+const { syncOrder } = require("./tickets");
+
+initializeApp();
+const db = getFirestore();
+setGlobalOptions({ region: "us-central1", maxInstances: 5 });
+
+// Pulls the order ID out of any Square payment/order event.
+function findOrderId(event) {
+  const data = (event && event.data) || {};
+  const obj = data.object || {};
+  for (const v of Object.values(obj)) {
+    if (v && typeof v === "object" && v.order_id) return v.order_id;
+  }
+  if (String(event.type || "").startsWith("order.") && data.id) return data.id;
+  return null;
+}
+
+// 1) Square calls this the moment an order or payment happens.
+exports.squareWebhook = onRequest(async (req, res) => {
+  if (req.method !== "POST") return res.status(405).send("POST only");
+  if (!sq.verifySignature(req.rawBody, req.get("x-square-hmacsha256-signature"))) {
+    logger.warn("Webhook rejected: check SQUARE_WEBHOOK_SIGNATURE_KEY and SQUARE_WEBHOOK_URL secrets");
+    return res.status(403).send("bad signature");
+  }
+  const orderId = findOrderId(req.body);
+  if (!orderId) return res.status(200).send("ignored");
+  try {
+    await syncOrder(db, await sq.getOrder(orderId));
+    res.status(200).send("ok");
+  } catch (err) {
+    logger.error("Webhook sync failed", { orderId, err: err.message });
+    res.status(500).send("error"); // Square will retry
+  }
+});
+
+// 2) Kitchen screen buttons: bump and recall.
+exports.kdsAction = onRequest({ cors: true }, async (req, res) => {
+  if (req.method !== "POST") return res.status(405).json({ error: "POST only" });
+  const { orderId, action } = req.body || {};
+  if (typeof orderId !== "string" || !/^[A-Za-z0-9_-]{1,64}$/.test(orderId)) {
+    return res.status(400).json({ error: "bad orderId" });
+  }
+  const ref = db.collection("kdsOrders").doc(orderId);
+  const snap = await ref.get();
+  if (!snap.exists) return res.status(404).json({ error: "ticket not found" });
+
+  if (action === "bump") {
+    await ref.update({ status: "done", closedBy: "kds", closedAt: FieldValue.serverTimestamp() });
+    let squareUpdated = true;
+    try {
+      await sq.completeFulfillments(orderId);
+    } catch (err) {
+      squareUpdated = false;
+      logger.warn("Could not complete order in Square", { orderId, err: err.message });
+    }
+    return res.json({ ok: true, squareUpdated });
+  }
+  if (action === "recall") {
+    await ref.update({ status: "open", recalledAt: FieldValue.serverTimestamp() });
+    return res.json({ ok: true });
+  }
+  return res.status(400).json({ error: "unknown action" });
+});
+
+// 3) List of your Square locations, for the screen's location picker.
+exports.kdsLocations = onRequest({ cors: true }, async (req, res) => {
+  try {
+    res.json({ locations: await sq.getLocations() });
+  } catch (err) {
+    logger.error("Could not load locations", { err: err.message });
+    res.status(500).json({ error: "could not load locations" });
+  }
+});
+
+// 4) Backup: every minute, catch any order a webhook missed.
+exports.kdsBackupSync = onSchedule({ schedule: "every 1 minutes", timeoutSeconds: 50 }, async () => {
+  if (!process.env.SQUARE_ACCESS_TOKEN) {
+    logger.warn("SQUARE_ACCESS_TOKEN not set; skipping backup sync");
+    return;
+  }
+  const orders = await sq.searchRecentOrders(15);
+  for (const order of orders) {
+    try {
+      await syncOrder(db, order);
+    } catch (err) {
+      logger.error("Backup sync failed", { orderId: order.id, err: err.message });
+    }
+  }
+});

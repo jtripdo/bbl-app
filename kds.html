@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="BBL Kitchen">
+  <meta name="theme-color" content="#0f0f10">
+  <title>BBL Kitchen</title>
+  <link rel="stylesheet" href="kds.css">
+</head>
+<body>
+  <header class="bar">
+    <img id="logo" class="logo" alt="">
+    <button id="locBtn" class="loc">Choose location</button>
+    <span id="count" class="count">0</span>
+    <div class="spacer"></div>
+    <span id="conn" class="conn"></span>
+    <button id="recallBtn" class="btn ghost" disabled>Recall</button>
+    <button id="soundBtn" class="btn ghost">Sound on</button>
+    <span id="clock" class="clock"></span>
+  </header>
+
+  <main id="board" class="board"></main>
+  <div id="empty" class="empty">No open tickets</div>
+  <div id="toast" class="toast"></div>
+
+  <div id="start" class="start">
+    <div class="start-box">
+      <h1>Kitchen screen</h1>
+      <label for="locSelect">Which location is this screen for?</label>
+      <select id="locSelect"><option value="">Loading locations…</option></select>
+      <button id="startBtn" class="btn big">Start</button>
+      <p>Turns on ticket sounds and keeps the screen awake.</p>
+    </div>
+  </div>
+
+  <script type="module" src="kds.js"></script>
+</body>
+</html>
