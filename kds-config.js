@@ -19,4 +19,4 @@ export const yellowAfterMin = 8;
 export const redAfterMin = 15;
 
 // Logo shown in the top bar (file in your bbl-app repo).
-export const logoUrl = "logo.png";
+export const logoUrl = "logo-dark.png";
