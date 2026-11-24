@@ -55,7 +55,7 @@ function toTicket(order) {
   };
 }
 
-async function syncOrder(db, order) {
+async function syncOrder(db, order, timing = {}) {
   if (!order || !order.id) return;
   const ref = db.collection("kdsOrders").doc(order.id);
   const locName = await locationName(order.location_id);
@@ -82,6 +82,7 @@ async function syncOrder(db, order) {
     t.set(ref, {
       ...toTicket(order),
       locationName: locName,
+      ...timing,
       status: "open",
       receivedAt: FieldValue.serverTimestamp(),
     });

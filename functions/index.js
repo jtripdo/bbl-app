@@ -25,7 +25,9 @@ function findOrderId(event) {
 }
 
 // 1) Square calls this the moment an order or payment happens.
-exports.squareWebhook = onRequest(async (req, res) => {
+// minInstances: 1 keeps one copy awake so tickets don't wait for a cold start.
+exports.squareWebhook = onRequest({ minInstances: 1 }, async (req, res) => {
+  const webhookAt = new Date().toISOString();
   if (req.method !== "POST") return res.status(405).send("POST only");
   if (!sq.verifySignature(req.rawBody, req.get("x-square-hmacsha256-signature"))) {
     logger.warn("Webhook rejected: check SQUARE_WEBHOOK_SIGNATURE_KEY and SQUARE_WEBHOOK_URL secrets");
@@ -34,7 +36,10 @@ exports.squareWebhook = onRequest(async (req, res) => {
   const orderId = findOrderId(req.body);
   if (!orderId) return res.status(200).send("ignored");
   try {
-    await syncOrder(db, await sq.getOrder(orderId));
+    await syncOrder(db, await sq.getOrder(orderId), {
+      squareEventAt: req.body.created_at || "",
+      webhookAt,
+    });
     res.status(200).send("ok");
   } catch (err) {
     logger.error("Webhook sync failed", { orderId, err: err.message });
