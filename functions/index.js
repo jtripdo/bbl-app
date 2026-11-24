@@ -9,6 +9,7 @@ const { getFirestore, FieldValue } = require("firebase-admin/firestore");
 const sq = require("./square");
 const { syncOrder } = require("./tickets");
 const kiosk = require("./kiosk");
+const online = require("./online");
 
 initializeApp();
 const db = getFirestore();
@@ -162,5 +163,30 @@ exports.kioskCheckout = onRequest({ cors: true }, async (req, res) => {
     if (err instanceof kiosk.UserError) return res.status(400).json({ error: err.message });
     logger.error("Kiosk checkout failed", { action: b.action, err: err.message });
     return res.status(500).json({ error: "Something went wrong. Please ask a team member for help." });
+  }
+});
+
+// 7) Online ordering: which locations can take orders right now.
+exports.onlineStores = onRequest({ cors: true }, async (req, res) => {
+  try {
+    res.set("Cache-Control", "no-store");
+    res.json({ stores: await online.stores() });
+  } catch (err) {
+    logger.error("Online stores failed", { err: err.message });
+    res.status(500).json({ error: "Online ordering is unavailable right now." });
+  }
+});
+
+// 8) Online ordering: create the Square checkout page, or check an order.
+exports.onlineCheckout = onRequest({ cors: true }, async (req, res) => {
+  const b = req.method === "GET" ? { action: "status", orderId: req.query.order } : (req.body || {});
+  try {
+    if (b.action === "status") return res.json(await online.status(b.orderId));
+    if (req.method !== "POST") return res.status(405).json({ error: "POST only" });
+    return res.json(await online.checkout(b));
+  } catch (err) {
+    if (err instanceof kiosk.UserError) return res.status(400).json({ error: err.message });
+    logger.error("Online checkout failed", { err: err.message });
+    return res.status(500).json({ error: "Something went wrong. Please try again or call us." });
   }
 });

@@ -1,0 +1,44 @@
+/* Phone-sized tweaks on top of kiosk.css */
+html, body { -webkit-user-select: auto; user-select: auto; }
+.small { font-size: 14px; }
+.center-text { text-align: center; }
+.big { font-size: 19px; padding: 16px 20px; }
+.narrow { max-width: 320px; }
+
+.hero { text-align: center; padding: calc(env(safe-area-inset-top) + 28px) 20px 6px; }
+.hero-logo { width: 180px; }
+.hero h1 { font-size: 30px; margin-top: 8px; }
+
+.store { width: 100%; text-align: left; background: var(--card); border: 1px solid var(--line);
+  border-radius: 16px; padding: 18px; display: flex; flex-direction: column; gap: 6px; }
+.store:active { border-color: var(--accent); }
+.store.closed { opacity: .55; }
+.store-title { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.store-title b { font-size: 21px; }
+.badge { font-size: 13px; font-weight: 700; padding: 4px 10px; border-radius: 999px; white-space: nowrap; }
+.badge.open { background: #1f4d33; color: #9be3b5; }
+.badge.later { background: #4a3c12; color: var(--accent); }
+.badge.shut { background: #2a2a2f; color: var(--muted); }
+
+.top { gap: 10px; }
+.top .ghost { font-size: 26px; padding: 4px 8px; }
+.store-head { flex: 1; min-width: 0; }
+.store-name { font-weight: 700; font-size: 18px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.logo { height: 36px; }
+.bar-cats { padding: 10px 14px; position: sticky; top: 64px; z-index: 2; background: var(--bg); }
+.cat { font-size: 15px; padding: 8px 14px; }
+
+.items { grid-template-columns: repeat(auto-fill, minmax(155px, 1fr)); gap: 10px; padding: 4px 14px 110px; }
+.item .name { font-size: 16px; }
+.item .price { font-size: 15px; }
+.item .info { padding: 10px 12px 12px; }
+
+.sheet h2 { font-size: 24px; }
+.opt { font-size: 16px; padding: 12px 14px; }
+.stepper button { width: 46px; height: 52px; }
+
+.panel { gap: 10px; }
+.panel label { font-size: 15px; color: var(--muted); margin-top: 6px; }
+select, input { font-size: 17px; padding: 13px; }
+.where { background: var(--card); border-radius: 14px; padding: 12px 14px; font-size: 16px; }
+.done-when { font-size: 20px; margin: 0; }

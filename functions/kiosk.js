@@ -293,6 +293,6 @@ async function cancelLink(linkId) {
 }
 
 module.exports = {
-  getMenu, quote, checkout, paymentLink, linkStatus, cancelLink,
+  getMenu, quote, checkout, paymentLink, linkStatus, cancelLink, orderDraft, cleanName,
   buildMenu, buildLineItems, UserError,
 };
