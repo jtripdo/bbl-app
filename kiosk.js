@@ -2,7 +2,7 @@ import * as cfg from "./kiosk-config.js";
 import * as ui from "./kiosk-ui.js";
 
 const $ = (id) => document.getElementById(id);
-const SCREENS = ["setup", "attract", "menu", "cart", "checkout", "done"];
+const SCREENS = ["setup", "attract", "menu", "cart", "checkout", "qr", "done"];
 
 const S = {
   location: read("kiosk-location", null),
@@ -15,6 +15,7 @@ const S = {
   card: null,
   payments: null,
   paying: false,
+  link: null,       // { linkId, orderId } while a QR payment is open
 };
 
 // ---------- helpers ----------
@@ -94,6 +95,7 @@ async function goAttract() {
 $("startOrder").addEventListener("click", () => { drawMenu(); show("menu"); });
 
 function resetOrder() {
+  if (S.link) cancelQr();
   S.cart = [];
   S.sheet = null;
   S.quote = null;
@@ -260,6 +262,7 @@ $("tips").addEventListener("click", (e) => {
 
 function setPayButton(on) {
   $("payBtn").disabled = !on || S.paying;
+  $("phonePayBtn").disabled = !S.quote || S.paying;
   if (!S.quote) $("payBtn").textContent = "Pay";
 }
 
@@ -325,6 +328,86 @@ $("payBtn").addEventListener("click", async () => {
     setPayButton(true);
     if (S.quote) $("payBtn").textContent = `Pay ${ui.fmt(S.quote.total + tipCents())}`;
   }
+});
+
+// ---------- pay on your phone (QR) ----------
+let pollTimer = null;
+let qrDeadline = 0;
+
+$("phonePayBtn").addEventListener("click", async () => {
+  if (S.paying || !S.quote) return;
+  const name = $("custName").value.trim();
+  if (!name) {
+    $("payError").textContent = "Please enter your name for the order.";
+    $("custName").focus();
+    return;
+  }
+  S.paying = true;
+  setPayButton(false);
+  $("payError").textContent = "";
+  try {
+    const r = await api("kioskCheckout", {
+      action: "link", locationId: S.location.id, cart: cartPayload(), name, key: newKey(),
+    });
+    S.link = { linkId: r.linkId, orderId: r.orderId, name: r.name };
+    destroyCard();
+    drawQr(r.url);
+    $("qrTotal").textContent = ui.fmt(S.quote.total) + " + tip if you'd like";
+    $("qrMsg").textContent = "Waiting for payment…";
+    show("qr");
+    qrDeadline = Date.now() + 5 * 60000;
+    pollLink();
+  } catch (e) {
+    $("payError").textContent = e.message;
+  } finally {
+    S.paying = false;
+    setPayButton(!!S.card);
+  }
+});
+
+function drawQr(url) {
+  if (!window.qrcode) {
+    $("qrCode").innerHTML = `<p style="color:#111">${ui.esc(url)}</p>`;
+    return;
+  }
+  const qr = window.qrcode(0, "M");
+  qr.addData(url);
+  qr.make();
+  $("qrCode").innerHTML = qr.createSvgTag({ cellSize: 8, margin: 0, scalable: true });
+}
+
+async function pollLink() {
+  clearTimeout(pollTimer);
+  if (S.screen !== "qr" || !S.link) return;
+  if (Date.now() > qrDeadline) {
+    $("qrMsg").textContent = "Timed out. Starting over…";
+    await cancelQr();
+    return goAttract();
+  }
+  try {
+    const st = await api("kioskCheckout", { action: "status", locationId: S.location.id, orderId: S.link.orderId });
+    if (st.paid) {
+      const name = S.link.name;
+      S.link = null;
+      return showDone({ name, orderNumber: st.orderNumber });
+    }
+    if (st.canceled) { S.link = null; return goAttract(); }
+  } catch (e) { /* keep trying */ }
+  pollTimer = setTimeout(pollLink, 2000);
+}
+
+async function cancelQr() {
+  clearTimeout(pollTimer);
+  const link = S.link;
+  S.link = null;
+  if (link) {
+    try { await api("kioskCheckout", { action: "cancel", locationId: S.location.id, linkId: link.linkId }); } catch (e) {}
+  }
+}
+
+$("qrCancel").addEventListener("click", async () => {
+  await cancelQr();
+  goCheckout();
 });
 
 // ---------- done ----------

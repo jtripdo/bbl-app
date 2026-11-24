@@ -147,6 +147,16 @@ exports.kioskCheckout = onRequest({ cors: true }, async (req, res) => {
       });
       return res.json({ ok: true, ...result });
     }
+    if (b.action === "link") {
+      return res.json(await kiosk.paymentLink({
+        locationId: b.locationId, name: b.name, cart: b.cart, key: b.key,
+      }));
+    }
+    if (b.action === "status") return res.json(await kiosk.linkStatus(b.orderId));
+    if (b.action === "cancel") {
+      await kiosk.cancelLink(b.linkId);
+      return res.json({ ok: true });
+    }
     return res.status(400).json({ error: "Unknown action" });
   } catch (err) {
     if (err instanceof kiosk.UserError) return res.status(400).json({ error: err.message });

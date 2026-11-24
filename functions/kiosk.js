@@ -245,4 +245,54 @@ async function checkout({ locationId, name, cart, sourceId, tip, key }) {
   };
 }
 
-module.exports = { getMenu, quote, checkout, buildMenu, buildLineItems, UserError };
+// Pay on your phone: a Square-hosted checkout page (Apple Pay, Google Pay,
+// Cash App, card) for the same order. The kiosk shows it as a QR code.
+async function paymentLink({ locationId, name, cart, key }) {
+  if (typeof key !== "string" || !/^[A-Za-z0-9-]{8,40}$/.test(key)) throw new UserError("Please try again.");
+  const menu = await getMenu(locationId);
+  const lineItems = buildLineItems(menu, cart);
+  const who = cleanName(name);
+  const options = {
+    allow_tipping: true,
+    accepted_payment_methods: { apple_pay: true, google_pay: true, cash_app_pay: true },
+  };
+  const body = (order, suffix) => ({
+    idempotency_key: `${key}-${suffix}`,
+    order,
+    checkout_options: options,
+    payment_note: `BBL Kiosk - ${who}`,
+  });
+  let data;
+  try {
+    data = await square("POST", "/online-checkout/payment-links", body(orderDraft(locationId, who, lineItems), "l"));
+  } catch (err) {
+    // Some accounts don't allow a pickup step on checkout links; fall back to the name as the ticket label.
+    if (!/fulfillment/i.test(String(err.message))) throw err;
+    const draft = orderDraft(locationId, who, lineItems);
+    delete draft.fulfillments;
+    draft.reference_id = who;
+    data = await square("POST", "/online-checkout/payment-links", body(draft, "l2"));
+  }
+  const link = data.payment_link;
+  return { url: link.url, linkId: link.id, orderId: link.order_id, name: who };
+}
+
+const ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
+
+async function linkStatus(orderId) {
+  if (!ID_RE.test(String(orderId))) throw new UserError("Unknown order.");
+  const data = await square("GET", `/orders/${encodeURIComponent(orderId)}`);
+  const o = data.order || {};
+  const paid = o.state === "COMPLETED" || (o.tenders || []).length > 0;
+  return { paid, canceled: o.state === "CANCELED", orderNumber: String(o.id || "").slice(-4).toUpperCase() };
+}
+
+async function cancelLink(linkId) {
+  if (!ID_RE.test(String(linkId))) return;
+  await square("DELETE", `/online-checkout/payment-links/${encodeURIComponent(linkId)}`).catch(() => {});
+}
+
+module.exports = {
+  getMenu, quote, checkout, paymentLink, linkStatus, cancelLink,
+  buildMenu, buildLineItems, UserError,
+};

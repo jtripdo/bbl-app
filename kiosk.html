@@ -79,7 +79,18 @@
     </main>
     <footer class="cartbar">
       <button id="payBtn" class="primary big">Pay</button>
+      <button id="phonePayBtn" class="phonepay big">Apple Pay or Google Pay on your phone</button>
     </footer>
+  </section>
+
+  <!-- Pay on your phone (QR code) -->
+  <section id="qr" class="screen center hide">
+    <h1>Scan to pay on your phone</h1>
+    <p class="muted">Apple Pay, Google Pay, Cash App or card</p>
+    <div id="qrCode" class="qrcode"></div>
+    <p id="qrTotal" class="qr-total"></p>
+    <p id="qrMsg" class="muted">Waiting for payment…</p>
+    <button id="qrCancel" class="ghost">Cancel and go back</button>
   </section>
 
   <!-- Done -->
@@ -100,6 +111,7 @@
     </div>
   </div>
 
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
   <script type="module" src="kiosk.js"></script>
 </body>
 </html>

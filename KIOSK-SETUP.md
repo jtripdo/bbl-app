@@ -17,4 +17,5 @@ To get back to setup on the kiosk, press and hold the logo on the start screen f
 - **Prices and tax**: always worked out by Square, not the iPad.
 - **Kitchen**: orders show up on the kitchen screen as "BBL Kiosk · Pickup · (name)". Bumping them marks them picked up in Square.
 - **Idle reset**: after 60 seconds with no taps, it asks "Still there?" and then starts over. You can change this in `kiosk-config.js`.
+- **Apple Pay / Google Pay**: customers tap "Apple Pay or Google Pay on your phone" to get a QR code. They scan it and pay on Square's checkout page on their own phone (Apple Pay, Google Pay, Cash App or card), and can add a tip there. The kiosk shows "Thank you" by itself once they've paid. If nobody pays within 5 minutes, the order is canceled and the kiosk starts over.
 - **Fees**: card entry on screen is charged at Square's online/API rate, not the tap/chip rate.
