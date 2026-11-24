@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#F5EDDC">
+  <title>Catering | Buttermilk Biscuit Lab</title>
+  <meta name="description" content="Buttermilk Biscuit Lab catering for any event in Tampa and the surrounding areas. $1,000 minimum.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=DM+Sans:wght@400;500;700&family=DM+Mono:wght@500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="order.css">
+  <link rel="stylesheet" href="catering.css">
+</head>
+<body>
+  <header class="site-head">
+    <div class="wrap head-row">
+      <a class="brand" href="https://www.buttermilkbiscuitlab.com">
+        <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true"><rect x="2" y="4" width="30" height="26" rx="9" fill="#F4B931" stroke="#1F1A14" stroke-width="2.5"/><path d="M7 13h20M7 20h20" stroke="#1F1A14" stroke-width="2" stroke-linecap="round"/></svg>
+        <span>buttermilk biscuit lab</span>
+      </a>
+      <nav aria-label="Main" class="nav">
+        <a class="nl on" href="catering.html" aria-current="page">Catering</a>
+        <a class="nl" href="https://www.buttermilkbiscuitlab.com/pop-ups">Pop-Up Calendar</a>
+        <a class="btn ink sm" href="order.html">Order Online</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="wrap c-hero">
+      <div class="c-hero-text">
+        <div class="pill-label">Catering · Tampa Bay</div>
+        <h1>We bring<br>the <span class="hl">biscuits.</span></h1>
+        <p class="lede">Weddings, offices, birthdays, brunches, tailgates. We cater any type of event in Tampa and the surrounding areas.</p>
+      </div>
+      <div class="c-hero-cta">
+        <a class="btn butter big-cta" href="#inquire">Request a quote</a>
+        <a class="btn paper" href="order.html">Small order? Order online</a>
+      </div>
+    </section>
+
+    <section class="wrap c-section">
+      <div class="steps">
+        <div class="step"><div class="mono-num">Step 01</div><h3>Tell us about it</h3><p>Date, headcount, location and the kind of event. The form below takes two minutes.</p></div>
+        <div class="step"><div class="mono-num">Step 02</div><h3>Get your menu + quote</h3><p>We'll build a menu around your crowd and send a quote you can lock in.</p></div>
+        <div class="step hot"><div class="mono-num">Step 03</div><h3>We show up hot</h3><p>Fresh biscuits, on time, set up and ready. You just enjoy the party.</p></div>
+      </div>
+    </section>
+
+    <section class="wrap c-section">
+      <div class="pk-head">
+        <div>
+          <div class="eyebrow">Packages + pricing</div>
+          <h2 class="h2">Choose your formula.</h2>
+        </div>
+        <div id="minimum" class="min-pill"></div>
+      </div>
+      <div id="packages" class="packages"></div>
+      <div id="addOnsWrap" class="hide">
+        <h3 class="addons-title">Add-ons</h3>
+        <div id="addOns" class="addons"></div>
+      </div>
+    </section>
+
+    <section class="wrap c-section">
+      <div class="small-crowd">
+        <div>
+          <div class="sc-title">Smaller crowd? Order online instead.</div>
+          <p>Under the catering minimum? Order from our menu online and pick it up.</p>
+        </div>
+        <a class="btn butter" href="order.html">Order online →</a>
+      </div>
+    </section>
+
+    <section id="inquire" class="wrap c-section inquire">
+      <div class="inq-side">
+        <div class="eyebrow">Catering inquiry</div>
+        <h2 class="h2">Let's feed your people.</h2>
+        <p class="lede">Send the details and we'll get back to you with a menu and quote. Rather talk it through?</p>
+        <a class="contact" href="tel:8139065681">📞 813.906.5681</a>
+        <a class="contact" href="mailto:info@buttermilkbiscuitlab.com">✉️ info@buttermilkbiscuitlab.com</a>
+      </div>
+      <div class="inq-card">
+        <form id="inqForm" class="inq-form" novalidate>
+          <label class="lbl">Your name<input name="name" required autocomplete="name"></label>
+          <label class="lbl">Email<input name="email" type="email" required autocomplete="email"></label>
+          <label class="lbl">Phone<input name="phone" type="tel" autocomplete="tel"></label>
+          <label class="lbl">Event date<input name="date" type="date" required></label>
+          <label class="lbl">Number of guests<input name="guests" type="number" min="1" required></label>
+          <label class="lbl">Event type
+            <select name="type">
+              <option>Wedding</option><option>Corporate / office</option><option>Birthday or party</option>
+              <option>Brunch or shower</option><option>Game day / tailgate</option><option>Something else</option>
+            </select></label>
+          <label class="lbl">Event location (city or venue)<input name="location"></label>
+          <label class="lbl">Package<select name="package" id="pkgSelect"><option>Not sure yet</option></select></label>
+          <label class="lbl full">Tell us more (menu ideas, dietary needs, timing)<textarea name="message" rows="5"></textarea></label>
+          <input name="company" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true">
+          <div class="full form-foot">
+            <span id="minNote" class="muted small"></span>
+            <button class="btn butter big-cta" type="submit" id="sendBtn">Send inquiry</button>
+          </div>
+          <p id="formError" class="error full" role="alert"></p>
+        </form>
+        <div id="sent" class="sent hide">
+          <div class="check" aria-hidden="true">✓</div>
+          <h3>Got it, thank you!</h3>
+          <p class="muted">We'll be in touch soon with a menu and quote.</p>
+          <button class="btn paper" id="again" type="button">Send another inquiry</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-foot">
+    <div class="wrap foot-row">
+      <div>
+        <div class="foot-mark">buttermilk<br>biscuit lab</div>
+        <p class="foot-sub">Scratch-made biscuits. Tampa, FL.</p>
+      </div>
+      <div class="foot-links">
+        <div class="eyebrow">Explore</div>
+        <a href="catering.html">Catering</a>
+        <a href="https://www.buttermilkbiscuitlab.com/pop-ups">Pop-Up Calendar</a>
+        <a href="order.html">Order Online</a>
+      </div>
+      <div class="foot-links">
+        <div class="eyebrow">Contact</div>
+        <a href="mailto:info@buttermilkbiscuitlab.com">info@buttermilkbiscuitlab.com</a>
+        <a href="tel:8139065681">813.906.5681</a>
+        <a href="https://instagram.com/welovebbl">Instagram @welovebbl</a>
+        <a href="https://maps.app.goo.gl/GqngMTFsYsLZFCTK8">Find us on Google</a>
+      </div>
+    </div>
+    <div class="wrap foot-copy">© 2026 Buttermilk Biscuit Lab</div>
+  </footer>
+
+  <script type="module" src="catering.js"></script>
+</body>
+</html>
