@@ -1,0 +1,47 @@
+name: Deploy kitchen display functions
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "functions/**"
+      - "firebase.json"
+      - ".github/workflows/deploy-functions.yml"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install function packages
+        working-directory: functions
+        run: npm install
+
+      - name: Write settings file from secrets
+        env:
+          SQUARE_ACCESS_TOKEN: ${{ secrets.SQUARE_ACCESS_TOKEN }}
+          SQUARE_WEBHOOK_SIGNATURE_KEY: ${{ secrets.SQUARE_WEBHOOK_SIGNATURE_KEY }}
+          SQUARE_WEBHOOK_URL: ${{ secrets.SQUARE_WEBHOOK_URL }}
+        run: |
+          {
+            echo "SQUARE_ACCESS_TOKEN=$SQUARE_ACCESS_TOKEN"
+            echo "SQUARE_WEBHOOK_SIGNATURE_KEY=$SQUARE_WEBHOOK_SIGNATURE_KEY"
+            echo "SQUARE_WEBHOOK_URL=$SQUARE_WEBHOOK_URL"
+          } > functions/.env
+
+      - name: Sign in to Google
+        env:
+          SA_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: printf '%s' "$SA_JSON" > "$RUNNER_TEMP/sa.json"
+
+      - name: Deploy to Firebase
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
+          PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+        run: npx --yes firebase-tools@latest deploy --only functions --project "$PROJECT_ID" --non-interactive --force
