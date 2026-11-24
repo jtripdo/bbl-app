@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#F5EDDC">
+  <title>Pop-Up Calendar | Buttermilk Biscuit Lab</title>
+  <meta name="description" content="Where Buttermilk Biscuit Lab is popping up next around Tampa Bay.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=DM+Sans:wght@400;500;700&family=DM+Mono:wght@500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="order.css">
+  <link rel="stylesheet" href="catering.css">
+  <link rel="stylesheet" href="popups.css">
+</head>
+<body>
+  <header class="site-head">
+    <div class="wrap head-row">
+      <a class="brand" href="https://www.buttermilkbiscuitlab.com">
+        <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true"><rect x="2" y="4" width="30" height="26" rx="9" fill="#F4B931" stroke="#1F1A14" stroke-width="2.5"/><path d="M7 13h20M7 20h20" stroke="#1F1A14" stroke-width="2" stroke-linecap="round"/></svg>
+        <span>buttermilk biscuit lab</span>
+      </a>
+      <nav aria-label="Main" class="nav">
+        <a class="nl" href="catering.html">Catering</a>
+        <a class="nl on" href="popups.html" aria-current="page">Pop-Up Calendar</a>
+        <a class="btn ink sm" href="order.html">Order Online</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="wrap c-hero">
+      <div class="c-hero-text">
+        <div class="pill-label">Pop-up calendar</div>
+        <h1>Where's the<br><span class="hl">lab</span> today?</h1>
+        <p class="lede">We pop up around Tampa Bay. Tap a date to see where we'll be. We sell out, so come early or order ahead online.</p>
+      </div>
+    </section>
+
+    <section class="wrap c-section cal-layout">
+      <div class="cal-card">
+        <div class="cal-head">
+          <button class="icon-btn" id="prev" type="button" aria-label="Previous month">‹</button>
+          <h2 id="monthLabel"></h2>
+          <button class="icon-btn" id="next" type="button" aria-label="Next month">›</button>
+        </div>
+        <div class="cal-grid wd" aria-hidden="true">
+          <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
+        </div>
+        <div id="days" class="cal-grid"></div>
+        <div class="legend">
+          <span><i class="dot"></i>Pop-up day</span>
+          <span><i class="sel-key"></i>Selected</span>
+        </div>
+      </div>
+
+      <div class="side">
+        <div class="day-card">
+          <div id="selLabel" class="eyebrow gold"></div>
+          <div id="selBody"></div>
+          <a class="btn butter flat" href="order.html">Order ahead</a>
+        </div>
+        <div class="soon-card">
+          <h3>Coming up</h3>
+          <div id="soon"><p class="muted">Loading…</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="wrap c-section promo-grid">
+      <div class="promo butter-bg">
+        <h3>Want us at your spot?</h3>
+        <p>Breweries, markets, offices, events. We'll bring the pop-up to you.</p>
+        <a class="btn ink" href="catering.html#inquire">Book the lab</a>
+      </div>
+      <div class="promo">
+        <h3>Never miss a drop.</h3>
+        <p class="muted">New dates, menus and sell-out alerts go up on Instagram first.</p>
+        <a class="btn paper" href="https://instagram.com/welovebbl">Follow @welovebbl</a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-foot">
+    <div class="wrap foot-row">
+      <div>
+        <div class="foot-mark">buttermilk<br>biscuit lab</div>
+        <p class="foot-sub">Scratch-made biscuits. Tampa, FL.</p>
+      </div>
+      <div class="foot-links">
+        <div class="eyebrow">Explore</div>
+        <a href="catering.html">Catering</a>
+        <a href="popups.html">Pop-Up Calendar</a>
+        <a href="order.html">Order Online</a>
+      </div>
+      <div class="foot-links">
+        <div class="eyebrow">Contact</div>
+        <a href="mailto:info@buttermilkbiscuitlab.com">info@buttermilkbiscuitlab.com</a>
+        <a href="tel:8139065681">813.906.5681</a>
+        <a href="https://instagram.com/welovebbl">Instagram @welovebbl</a>
+        <a href="https://maps.app.goo.gl/GqngMTFsYsLZFCTK8">Find us on Google</a>
+      </div>
+    </div>
+    <div class="wrap foot-copy">© 2026 Buttermilk Biscuit Lab</div>
+  </footer>
+
+  <script type="module" src="popups.js"></script>
+</body>
+</html>
