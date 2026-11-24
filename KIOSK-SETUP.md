@@ -4,7 +4,7 @@ Customers order on an iPad, pay by card on the screen (Square's secure card form
 
 ## Setup
 
-1. **Application ID**: developer.squareup.com → BBL Kitchen → **Production** → Credentials → copy **Application ID** (starts with `sq0idp-`). Paste it into `kiosk-config.js` as `squareApplicationId`. It's public, so it's safe to keep in the repo.
+1. **Application ID**: developer.squareup.com → BBL Kitchen → **Production** → Credentials → copy **Application ID** (starts with `sq0idp-`). Already added to `kiosk-config.js` (it's public, so it's safe in the repo).
 2. **Open the kiosk**: on the kiosk iPad, go to `https://jtripdo.github.io/bbl-app/kiosk.html` → Share → **Add to Home Screen**.
 3. **Pick the location** and tap **Start kiosk**. The kiosk remembers it.
 4. **Lock the iPad to the kiosk**: Settings → Accessibility → **Guided Access** → on. Open the kiosk, triple-click the side/top button, then tap Start. Also set Display & Brightness → **Auto-Lock → Never**.

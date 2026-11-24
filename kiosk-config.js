@@ -5,7 +5,7 @@ export const functionsBase = "https://us-central1-bbl-app-d58e6.cloudfunctions.n
 
 // Square > developer.squareup.com > BBL Kitchen > Production > Credentials >
 // "Application ID" (starts with sq0idp-). This ID is public, so it's safe here.
-export const squareApplicationId = "PASTE-APPLICATION-ID";
+export const squareApplicationId = "sq0idp-uH258Box8-k9epRzBwFqAw";
 
 // Tip choices shown at checkout, in percent. 0 = "No tip".
 export const tipPercents = [0, 15, 18, 20];
