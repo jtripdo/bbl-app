@@ -1,5 +1,5 @@
 import { EMAIL } from "./config.js";
-import { packages, addOns, minimum } from "./catering-config.js";
+import { packages, addOns } from "./catering-config.js";
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => (
@@ -8,9 +8,6 @@ const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => (
 const money = (n) => "$" + Number(n).toLocaleString("en-US");
 
 // ---------- packages ----------
-const minText = `${money(minimum)} minimum per event`;
-$("minimum").textContent = minText;
-$("minNote").textContent = `Catering orders start at ${money(minimum)}.`;
 
 $("packages").innerHTML = packages.map((p, i) => {
   const tone = p.tone === "dark" ? " dark" : p.tone === "butter" ? " butter-card" : "";
