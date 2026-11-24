@@ -1,0 +1,52 @@
+/* Pop-up calendar — builds on order.css + catering.css */
+.cal-layout { display: flex; flex-wrap: wrap; gap: 30px; align-items: flex-start; }
+.cal-card { flex: 3 1 560px; min-width: 0; background: var(--paper); border: 2px solid var(--ink); border-radius: 28px;
+  box-shadow: 8px 8px 0 var(--ink); padding: clamp(18px, 3vw, 34px); }
+.cal-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 20px; }
+.cal-head h2 { font-family: var(--display); font-weight: 800; font-size: clamp(26px, 3.5vw, 42px); letter-spacing: -.03em; text-align: center; }
+.icon-btn { width: 48px; height: 48px; border-radius: 50%; border: 2px solid var(--ink); background: var(--paper); font-size: 26px; font-weight: 800; line-height: 1; }
+.icon-btn:hover { background: var(--butter); }
+.cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 7px; }
+.cal-grid.wd { margin-bottom: 7px; }
+.cal-grid.wd div { text-align: center; font-family: var(--mono); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); padding: 6px 0; }
+.day { aspect-ratio: 1 / 1; min-height: 40px; border-radius: 14px; border: 2px solid var(--hover); background: transparent;
+  font-size: clamp(14px, 1.6vw, 19px); font-weight: 500; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; padding: 0; }
+.day.blank { border: 0; pointer-events: none; }
+.day.past { color: #A89C88; }
+.day.has { border-color: var(--ink); background: var(--cream); font-weight: 800; }
+.day.today { box-shadow: inset 0 0 0 2px var(--butter); }
+.day.sel { background: var(--butter); border-color: var(--ink); }
+.day .dot, .legend .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ink); display: inline-block; }
+.legend { display: flex; gap: 20px; flex-wrap: wrap; margin-top: 18px; font-size: 14px; color: var(--brown); }
+.legend span { display: inline-flex; align-items: center; gap: 8px; }
+.sel-key { width: 14px; height: 14px; border-radius: 4px; background: var(--butter); border: 2px solid var(--ink); display: inline-block; }
+
+.side { flex: 2 1 320px; min-width: 0; display: flex; flex-direction: column; gap: 22px; }
+.day-card { background: var(--ink); color: var(--cream); border-radius: 28px; padding: 30px; display: flex; flex-direction: column; }
+.gold { color: var(--butter); }
+.ev { margin-top: 14px; }
+.ev + .ev { padding-top: 16px; border-top: 1px solid var(--brown); }
+.ev-name { font-family: var(--display); font-weight: 800; font-size: 32px; letter-spacing: -.03em; line-height: 1; }
+.ev-row { display: flex; gap: 10px; align-items: flex-start; margin-top: 12px; font-size: 17px; }
+.ev-row a { color: var(--cream); }
+.ev-row svg { flex-shrink: 0; margin-top: 2px; }
+.none-title { font-family: var(--display); font-weight: 800; font-size: 26px; margin-top: 14px; }
+.day-card p { color: #CFC3AC; line-height: 1.5; margin: 10px 0 0; }
+.flat { margin-top: 22px; box-shadow: none; border-color: var(--butter); align-self: flex-start; }
+.soon-card { background: var(--paper); border: 2px solid var(--ink); border-radius: 28px; padding: 26px; }
+.soon-card h3 { font-family: var(--display); font-weight: 800; font-size: 24px; margin: 0 0 10px; }
+.soon { display: flex; gap: 16px; align-items: center; width: 100%; text-align: left; background: none; border: 0;
+  border-top: 2px solid var(--hover); padding: 12px 0; min-height: 64px; }
+.badge-date { flex-shrink: 0; width: 56px; text-align: center; border: 2px solid var(--ink); border-radius: 12px; padding: 5px 0; background: var(--butter); }
+.badge-date small { display: block; font-family: var(--mono); font-size: 11px; letter-spacing: .08em; }
+.badge-date b { display: block; font-family: var(--display); font-weight: 800; font-size: 22px; line-height: 1; }
+.soon-text { display: flex; flex-direction: column; gap: 2px; }
+.soon-text b { font-size: 16px; }
+.soon-text span { font-size: 14px; color: var(--muted); }
+
+.promo-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; }
+.promo { background: var(--paper); border: 2px solid var(--ink); border-radius: 28px; box-shadow: 6px 6px 0 var(--ink);
+  padding: 34px; display: flex; flex-direction: column; gap: 14px; align-items: flex-start; }
+.promo.butter-bg { background: var(--butter); }
+.promo h3 { font-family: var(--display); font-weight: 800; font-size: 34px; letter-spacing: -.03em; line-height: 1; margin: 0; }
+.promo p { margin: 0; font-size: 17px; line-height: 1.5; }
