@@ -3,90 +3,124 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#0f0f10">
-  <title>Order online | Buttermilk Biscuit Lab</title>
-  <meta name="description" content="Order Buttermilk Biscuit Lab for pickup.">
-  <link rel="stylesheet" href="kiosk.css">
+  <meta name="theme-color" content="#F5EDDC">
+  <title>Order Online | Buttermilk Biscuit Lab</title>
+  <meta name="description" content="Order Buttermilk Biscuit Lab for pickup in Tampa.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=DM+Sans:wght@400;500;700&family=DM+Mono:wght@500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="order.css">
 </head>
 <body>
-  <!-- Pick a location -->
-  <section id="stores" class="screen">
-    <div class="hero">
-      <img id="heroLogo" class="hero-logo" alt="Buttermilk Biscuit Lab">
-      <h1>Order for pickup</h1>
-      <p class="muted">Choose a location</p>
+  <header class="site-head">
+    <div class="wrap head-row">
+      <a class="brand" href="https://www.buttermilkbiscuitlab.com">
+        <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true"><rect x="2" y="4" width="30" height="26" rx="9" fill="#F4B931" stroke="#1F1A14" stroke-width="2.5"/><path d="M7 13h20M7 20h20" stroke="#1F1A14" stroke-width="2" stroke-linecap="round"/></svg>
+        <span>buttermilk biscuit lab</span>
+      </a>
+      <nav aria-label="Main" class="nav">
+        <a class="nl" href="https://www.buttermilkbiscuitlab.com/catering">Catering</a>
+        <a class="nl" href="https://www.buttermilkbiscuitlab.com/pop-ups">Pop-Up Calendar</a>
+        <a class="btn ink sm" href="order.html" aria-current="page">Order Online</a>
+      </nav>
     </div>
-    <main id="storeList" class="panel"><p class="muted center-text">Loading…</p></main>
+  </header>
+
+  <!-- 1. Pick a location -->
+  <section id="stores" class="screen">
+    <div class="wrap hero">
+      <div class="eyebrow">Order online · Pickup</div>
+      <h1>Order ahead.<br><span class="hl">Grab it hot.</span></h1>
+      <p class="lede">Pick a spot, build your order, and choose ASAP or a time later today.</p>
+    </div>
+    <div class="wrap"><div id="storeList" class="store-grid"><p class="muted">Loading locations…</p></div></div>
   </section>
 
-  <!-- Menu -->
+  <!-- 2. Menu -->
   <section id="menu" class="screen hide">
-    <header class="top">
-      <button id="changeStore" class="ghost">‹</button>
-      <div class="store-head">
-        <div id="storeName" class="store-name"></div>
-        <div id="storeHours" class="muted small"></div>
+    <div class="subbar">
+      <div class="wrap subbar-row">
+        <button id="changeStore" class="back" aria-label="Change location">‹</button>
+        <div class="store-head">
+          <div id="storeName" class="store-name"></div>
+          <div id="storeHours" class="mono small"></div>
+        </div>
       </div>
-      <img class="logo" id="menuLogo" alt="">
-    </header>
-    <nav id="cats" class="cats bar-cats"></nav>
-    <main id="items" class="items"></main>
+      <div class="wrap"><nav id="cats" class="cats"></nav></div>
+    </div>
+    <main class="wrap"><div id="items" class="items"></div></main>
     <footer id="cartBar" class="cartbar hide">
-      <button id="openCart" class="primary big"></button>
+      <div class="wrap"><button id="openCart" class="btn butter wide"></button></div>
     </footer>
   </section>
 
   <div id="sheet" class="overlay hide">
-    <div class="sheet" id="sheetBody"></div>
+    <div class="sheet" id="sheetBody" role="dialog" aria-modal="true"></div>
   </div>
 
-  <!-- Cart -->
+  <!-- 3. Cart -->
   <section id="cart" class="screen hide">
-    <header class="top">
-      <button id="backToMenu" class="ghost">‹ Menu</button>
-      <h2>Your order</h2>
-      <span></span>
-    </header>
-    <main id="cartLines" class="panel"></main>
+    <div class="wrap narrow">
+      <button id="backToMenu" class="link-back">‹ Back to menu</button>
+      <h2 class="page-title">Your order</h2>
+      <div id="cartLines" class="stack"></div>
+    </div>
     <footer class="cartbar">
-      <button id="toCheckout" class="primary big">Checkout</button>
+      <div class="wrap narrow"><button id="toCheckout" class="btn butter wide">Checkout</button></div>
     </footer>
   </section>
 
-  <!-- Checkout -->
+  <!-- 4. Checkout -->
   <section id="checkout" class="screen hide">
-    <header class="top">
-      <button id="backToCart" class="ghost">‹ Back</button>
-      <h2>Pickup details</h2>
-      <span></span>
-    </header>
-    <main class="panel">
-      <div id="pickupWhere" class="where"></div>
-      <label for="pickupTime">Pickup time</label>
-      <select id="pickupTime"></select>
-      <label for="custName">Name</label>
-      <input id="custName" maxlength="30" autocomplete="given-name" placeholder="Your first name">
-      <label for="custPhone">Phone</label>
-      <input id="custPhone" type="tel" maxlength="16" autocomplete="tel" placeholder="(813) 555-0123">
-      <div id="totals" class="totals"></div>
-      <p class="muted small">You'll pay on Square's secure checkout page: Apple Pay, Google Pay, Cash App or card. You can add a tip there.</p>
-      <p id="payError" class="error"></p>
-    </main>
+    <div class="wrap narrow">
+      <button id="backToCart" class="link-back">‹ Back to your order</button>
+      <h2 class="page-title">Pickup details</h2>
+      <div class="stack">
+        <div id="pickupWhere" class="where"></div>
+        <label for="pickupTime">Pickup time</label>
+        <select id="pickupTime"></select>
+        <label for="custName">Name</label>
+        <input id="custName" maxlength="30" autocomplete="given-name" placeholder="Your first name">
+        <label for="custPhone">Phone</label>
+        <input id="custPhone" type="tel" maxlength="16" autocomplete="tel" placeholder="(813) 555-0123">
+        <div id="totals" class="totals"></div>
+        <p class="muted small">Next you'll pay on Square's secure checkout: Apple Pay, Google Pay, Cash App or card. You can add a tip there.</p>
+        <p id="payError" class="error" role="alert"></p>
+      </div>
+    </div>
     <footer class="cartbar">
-      <button id="payBtn" class="primary big">Continue to payment</button>
+      <div class="wrap narrow"><button id="payBtn" class="btn butter wide">Continue to payment</button></div>
     </footer>
   </section>
 
-  <!-- Thank you -->
-  <section id="done" class="screen center hide">
-    <div class="check">✓</div>
-    <h1 id="doneTitle">Thank you!</h1>
-    <p id="doneOrder" class="done-num"></p>
-    <p id="doneWhen" class="done-when"></p>
-    <p id="doneWhere" class="muted"></p>
-    <button id="doneBtn" class="primary big narrow">Start a new order</button>
+  <!-- 5. Thank you -->
+  <section id="done" class="screen hide">
+    <div class="wrap narrow done">
+      <div class="check" aria-hidden="true">✓</div>
+      <div class="eyebrow">Order placed</div>
+      <h1 id="doneTitle">Thank you!</h1>
+      <p id="doneOrder" class="done-num"></p>
+      <p id="doneWhen" class="done-when"></p>
+      <p id="doneWhere" class="muted"></p>
+      <button id="doneBtn" class="btn ink">Start a new order</button>
+    </div>
   </section>
+
+  <footer class="site-foot">
+    <div class="wrap foot-row">
+      <div>
+        <div class="foot-mark">buttermilk<br>biscuit lab</div>
+        <p class="foot-sub">Scratch-made biscuits. Tampa, FL.</p>
+      </div>
+      <div class="foot-links">
+        <div class="eyebrow">Contact</div>
+        <a href="mailto:info@buttermilkbiscuitlab.com">info@buttermilkbiscuitlab.com</a>
+        <a href="tel:8139065681">813.906.5681</a>
+        <a href="https://instagram.com/welovebbl">Instagram @welovebbl</a>
+      </div>
+    </div>
+    <div class="wrap foot-copy">© 2026 Buttermilk Biscuit Lab</div>
+  </footer>
 
   <script type="module" src="order.js"></script>
 </body>

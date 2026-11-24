@@ -1,4 +1,4 @@
-import { functionsBase, logoUrl } from "./kiosk-config.js";
+import { functionsBase } from "./kiosk-config.js";
 import * as ui from "./kiosk-ui.js";
 
 const $ = (id) => document.getElementById(id);
@@ -8,6 +8,7 @@ const S = { stores: [], store: null, menu: null, cat: null, cart: [], sheet: nul
 // ---------- helpers ----------
 function show(name) {
   SCREENS.forEach((s) => $(s).classList.toggle("hide", s !== name));
+  document.body.classList.toggle("ordering", name !== "stores" && name !== "done");
   window.scrollTo(0, 0);
 }
 async function api(path, body) {
@@ -255,10 +256,5 @@ async function showPaid() {
 $("doneBtn").addEventListener("click", () => { $("doneOrder").textContent = ""; $("doneWhen").textContent = ""; $("doneWhere").textContent = ""; loadStores(); });
 
 // ---------- boot ----------
-["heroLogo", "menuLogo"].forEach((id) => {
-  const img = $(id);
-  img.src = logoUrl;
-  img.onerror = () => { img.style.visibility = "hidden"; };
-});
 if (new URLSearchParams(location.search).get("paid")) showPaid();
 else loadStores();
