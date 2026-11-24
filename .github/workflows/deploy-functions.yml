@@ -35,6 +35,19 @@ jobs:
             echo "SQUARE_WEBHOOK_URL=$SQUARE_WEBHOOK_URL"
           } > functions/.env
 
+      - name: Check which secrets are set
+        env:
+          A: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          B: ${{ secrets.FIREBASE_PROJECT_ID }}
+          C: ${{ secrets.SQUARE_ACCESS_TOKEN }}
+          D: ${{ secrets.SQUARE_WEBHOOK_SIGNATURE_KEY }}
+          E: ${{ secrets.SQUARE_WEBHOOK_URL }}
+        run: |
+          for pair in "FIREBASE_SERVICE_ACCOUNT:$A" "FIREBASE_PROJECT_ID:$B" "SQUARE_ACCESS_TOKEN:$C" "SQUARE_WEBHOOK_SIGNATURE_KEY:$D" "SQUARE_WEBHOOK_URL:$E"; do
+            name="${pair%%:*}"; val="${pair#*:}"
+            if [ -n "$val" ]; then echo "SECRET $name: set"; else echo "SECRET $name: MISSING"; fi
+          done
+
       - name: Sign in to Google
         env:
           SA_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
