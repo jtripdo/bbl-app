@@ -1,8 +1,6 @@
 // Catering page content. Edit here (or tell Claude) to change packages and prices.
 // price: a number per guest (e.g. 18) or null to show "Custom quote".
 
-export const minimum = 1000;
-
 export const packages = [
   {
     name: "The Drop-Off",
