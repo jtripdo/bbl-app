@@ -19,7 +19,7 @@ async function square(method, path, body) {
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    const msg = (data.errors || []).map((e) => e.detail || e.code).join("; ");
+    const msg = (data.errors || []).map((e) => [e.code, e.detail].filter(Boolean).join(": ")).join("; ");
     throw new Error(`Square ${method} ${path} failed (${res.status}): ${msg}`);
   }
   return data;
@@ -127,6 +127,7 @@ function verifySignature(rawBody, signature) {
 }
 
 module.exports = {
+  square,
   getOrder,
   getLocations,
   locationName,
