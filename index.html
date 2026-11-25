@@ -1,27 +1,135 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="theme-color" content="#12110f">
-<meta name="color-scheme" content="dark">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="BBL">
-<link rel="apple-touch-icon" href="logo.png">
-<title>Buttermilk Biscuit Lab</title>
-<link rel="stylesheet" href="style.css">
-<link rel="stylesheet" href="dark.css">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#F5EDDC">
+  <title>Buttermilk Biscuit Lab | Scratch-made biscuits in Tampa</title>
+  <meta name="description" content="Scratch-made buttermilk biscuits out of Tampa. Catch us at a pop-up, order ahead online, or let us cater your next event.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Antonio:wght@400;600;700&family=Inter:wght@400;500;600;700&family=DM+Mono:wght@500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="order.css?v=20261125e">
+  <link rel="stylesheet" href="catering.css?v=20261125e">
+  <link rel="stylesheet" href="home.css?v=20261125e">
+  <link rel="stylesheet" href="theme.css?v=20261125e">
 </head>
-<body style="background:#12110f">
-<div id="app">
-  <img class="logo" src="logo.png" alt="Buttermilk Biscuit Lab" onerror="this.style.display='none';document.getElementById('brand').style.display='block'">
-  <div id="brand" class="brand">Buttermilk Biscuit Lab</div>
-  <div id="bar"></div>
-  <div id="view"><p style="text-align:center">Loading...</p></div>
-</div>
-<script>window.onerror=function(m){document.getElementById('view').innerHTML='<p style="color:red;padding:20px">Error: '+m+'</p>';};</script>
-<script type="module" src="app.js"></script>
+<body>
+  <header class="site-head">
+    <div class="wrap head-row">
+      <a class="brand" href="./" aria-current="page"><img class="brand-logo" src="logo-ink.png" alt="Buttermilk Biscuit Lab home">
+      </a>
+      <nav aria-label="Main" class="nav">
+        <a class="nl" href="about.html">About Us</a>
+        <a class="nl" href="order.html">Order Online</a>
+        <a class="nl" href="popups.html">Pop-Up Calendar</a>
+        <a class="nl" href="catering.html">Catering</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="wrap h-hero">
+      <div class="h-hero-text">
+        <div class="pill-label">Lab No. 001 · Tampa, FL</div>
+        <h1>Big biscuits.<br><span class="hl">Bigger</span> events.</h1>
+        <p class="lede">Scratch-made buttermilk biscuits out of Tampa. Catch us at a pop-up, order ahead online, or let us cater your next event.</p>
+        <div class="h-ctas">
+          <a class="btn butter" href="catering.html">Book catering →</a>
+          <a class="btn plain" href="order.html">Order online</a>
+          <a class="btn plain" href="popups.html">Find a pop-up</a>
+        </div>
+      </div>
+      <div class="h-art">
+        <div class="art-box">
+          <div class="art-back"></div>
+          <div class="art-front" id="heroPhoto"><img src="logo.png" alt="Buttermilk Biscuit Lab" class="art-logo"></div>
+          <svg class="art-badge" viewBox="0 0 160 160" aria-hidden="true">
+            <defs><path id="ring" d="M80,80 m-58,0 a58,58 0 1,1 116,0 a58,58 0 1,1 -116,0"/></defs>
+            <circle cx="80" cy="80" r="78" fill="#F4B931" stroke="#1F1A14" stroke-width="3"/>
+            <text font-family="DM Mono, monospace" font-size="15" font-weight="500" letter-spacing="3" fill="#1F1A14"><textPath href="#ring">FRESH OUT THE OVEN · TAMPA BAY · </textPath></text>
+            <rect x="56" y="60" width="48" height="40" rx="13" fill="#FFFBF2" stroke="#1F1A14" stroke-width="3"/>
+            <path d="M63 74h34M63 86h34" stroke="#1F1A14" stroke-width="2.5" stroke-linecap="round"/>
+          </svg>
+          <a class="next-sticker hide" id="nextPop" href="popups.html">
+            <span class="eyebrow">Next pop-up</span>
+            <b id="nextPopText"></b>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <div class="marquee-band" aria-hidden="true">
+      <div class="marquee">
+        <span>catering</span><i>✦</i><span>pop-ups</span><i>✦</i><span>order ahead</span><i>✦</i><span>made from scratch</span><i>✦</i><span>tampa bay</span><i>✦</i>
+        <span>catering</span><i>✦</i><span>pop-ups</span><i>✦</i><span>order ahead</span><i>✦</i><span>made from scratch</span><i>✦</i><span>tampa bay</span><i>✦</i>
+      </div>
+    </div>
+
+    <section class="wrap h-section">
+      <div class="eyebrow">Three ways to get biscuits</div>
+      <h2 class="h2 ways-title">Pick your experiment.</h2>
+      <div class="ways">
+        <a class="way butter-bg" href="catering.html">
+          <div class="num">01</div><div class="way-name">Catering</div>
+          <p>Weddings, offices, parties, game days. Any event across Tampa Bay. Packages inside.</p>
+          <span class="go">See packages →</span>
+        </a>
+        <a class="way" href="popups.html">
+          <div class="num">02</div><div class="way-name">Pop-ups</div>
+          <p>We pop up around town. Check the calendar for dates, times and where to find us next.</p>
+          <span class="go">View calendar →</span>
+        </a>
+        <a class="way dark" href="order.html">
+          <div class="num">03</div><div class="way-name">Order online</div>
+          <p>Order ahead, skip the line, pick up hot at Pasta Packs or our pop-up.</p>
+          <span class="go">Start an order →</span>
+        </a>
+      </div>
+    </section>
+
+    <section class="wrap h-section photos hide" id="photos"></section>
+
+    <section class="wrap h-section">
+      <div class="cta-band">
+        <div class="cta-text">
+          <div class="eyebrow ink-eyebrow">Catering · Tampa Bay + surrounding areas</div>
+          <h2 class="cta-title">Feeding 20?<br>Feeding 2,000?</h2>
+          <p>We cater any kind of event. Tell us the date, the crowd and the vibe, and we'll handle the biscuits.</p>
+        </div>
+        <div class="cta-btns">
+          <a class="btn ink big-cta" href="catering.html#inquire">Get a catering quote</a>
+          <a class="call" href="tel:8139065681">or call 813.906.5681</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-foot">
+    <div class="wrap foot-row">
+      <div>
+        <img class="foot-logo" src="logo-dark.png" alt="Buttermilk Biscuit Lab">
+        <p class="foot-sub">Scratch-made biscuits. Tampa, FL.</p>
+      </div>
+      <div class="foot-links">
+        <div class="eyebrow">Explore</div>
+        <a href="./">Home</a>
+        <a href="about.html">About Us</a>
+        <a href="order.html">Order Online</a>
+        <a href="popups.html">Pop-Up Calendar</a>
+        <a href="catering.html">Catering</a>
+      </div>
+      <div class="foot-links">
+        <div class="eyebrow">Contact</div>
+        <a href="mailto:info@buttermilkbiscuitlab.com">info@buttermilkbiscuitlab.com</a>
+        <a href="tel:8139065681">813.906.5681</a>
+        <a href="https://instagram.com/welovebbl">Instagram @welovebbl</a>
+        <a href="https://maps.app.goo.gl/GqngMTFsYsLZFCTK8">Find us on Google</a>
+      </div>
+    </div>
+    <div class="wrap foot-copy">© 2026 Buttermilk Biscuit Lab</div>
+  </footer>
+
+  <script type="module" src="home.js?v=20261125e"></script>
 </body>
 </html>
-<!-- END -->
