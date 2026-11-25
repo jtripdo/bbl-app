@@ -1,6 +1,7 @@
 import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import {initializeFirestore,getFirestore,persistentLocalCache,persistentMultipleTabManager,collection,doc,setDoc,addDoc,updateDoc,deleteDoc,onSnapshot,query,where,orderBy,limit,serverTimestamp} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-export {collection,doc,setDoc,addDoc,updateDoc,deleteDoc,onSnapshot,query,where,orderBy,limit,serverTimestamp};
+import {initializeFirestore,getFirestore,persistentLocalCache,persistentMultipleTabManager,collection,doc,getDoc,setDoc,addDoc,updateDoc,deleteDoc,onSnapshot,query,where,orderBy,limit,serverTimestamp} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import {getAuth} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+export {collection,doc,getDoc,setDoc,addDoc,updateDoc,deleteDoc,onSnapshot,query,where,orderBy,limit,serverTimestamp};
 
 const firebaseConfig={
   apiKey:"AIzaSyCV4nlJD5Uq6pS-P_sabpzHUjgi2kf_6Uk",
@@ -15,12 +16,23 @@ let _db;
 try{_db=initializeFirestore(app,{localCache:persistentLocalCache({tabManager:persistentMultipleTabManager()})});}
 catch(e){_db=getFirestore(app);}
 export const db=_db;
+export const auth=getAuth(app);
 
-// Only used the very first time, to fill the team list. After that, use the Team tile in the app.
-export const DEFAULT_TEAM=["Joe D.","Noel C.","Bernard S."];
+// Calls the team account server (invites, sign-up, resets). Sends the sign-in token when signed in.
+const FN='https://us-central1-bbl-app-d58e6.cloudfunctions.net/teamAccount';
+export async function teamApi(action,body={}){
+  const h={'Content-Type':'application/json'};
+  if(auth.currentUser)h.Authorization='Bearer '+(await auth.currentUser.getIdToken());
+  const r=await fetch(FN,{method:'POST',headers:h,body:JSON.stringify({action,...body})});
+  const d=await r.json().catch(()=>({}));
+  if(!r.ok)throw new Error(d.error||'Something went wrong. Please try again.');
+  return d;
+}
 
-export const S={me:null,subs:[],team:[]};
-try{S.me=localStorage.getItem('bblName');}catch(e){}
+export const DEFAULT_TEAM=[];
+
+// me = signed-in person's name (stamped on everything they do), role = owner | manager | staff
+export const S={me:null,uid:null,role:null,username:null,subs:[],team:[]};
 
 export const $=s=>document.querySelector(s);
 export const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
