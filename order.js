@@ -1,7 +1,4 @@
 import { functionsBase } from "./kiosk-config.js";
-import { firebaseConfig } from "./kds-config.js";
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-lite.js";
 import * as ui from "./kiosk-ui.js";
 
 const $ = (id) => document.getElementById(id);
@@ -40,32 +37,22 @@ let wantLoc = (() => {
   return v ? (LOC_ALIASES[v.toLowerCase()] || v) : null;
 })();
 
-// Today's pop-up from the calendar (where to pick up), if there is one.
-let popupInfo = null;
-async function loadPopupInfo() {
-  try {
-    const db = getFirestore(initializeApp(firebaseConfig));
-    const snap = await getDocs(query(collection(db, "events"), where("popup", "==", true)));
-    const n = new Date();
-    const today = `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}-${String(n.getDate()).padStart(2, "0")}`;
-    const ev = snap.docs.map((d) => d.data())
-      .filter((e) => e.active !== false && e.date === today)
-      .sort((a, b) => (a.time || "").localeCompare(b.time || ""))[0];
-    popupInfo = ev ? { place: ev.location || "", title: ev.title || "" } : null;
-  } catch (e) { popupInfo = null; }
-}
+// Pop-up details (dates, places, pickup times) come from the server, built from the pop-up calendar.
+const wantDate = new URLSearchParams(location.search).get("date") || "";
+let chosenPopup = "";
 
 function withPopupPlace(store) {
-  if (store && store.id === POP_UPS && popupInfo && popupInfo.place) {
-    return { ...store, address: popupInfo.place, popupTitle: popupInfo.title };
-  }
-  return store;
+  if (!store || store.id !== POP_UPS) return store;
+  const pops = store.popups || [];
+  const first = pops.find((p) => p.date === wantDate) || pops[0];
+  const place = store.asap ? (store.asapPlace || (first && first.place)) : (first && first.place);
+  return { ...store, address: place || store.address, nextPop: first || null };
 }
 
 async function loadStores() {
   show("stores");
   try {
-    const [res] = await Promise.all([api("onlineStores"), loadPopupInfo()]);
+    const res = await api("onlineStores");
     S.stores = res.stores.map(withPopupPlace);
     if (wantLoc) {
       const only = S.stores.find((s) => s.id === wantLoc);
@@ -85,7 +72,11 @@ function drawStores(list = S.stores, single = false) {
     : "This location isn't taking orders right now."} <a href="order.html">See all locations</a></p>` : "";
   $("storeList").innerHTML = list.map((s) => {
     let badge, sub;
-    if (s.asap) { badge = `<span class="badge open">Open now</span>`; sub = s.hoursToday ? `Today ${s.hoursToday}` : ""; }
+    if (s.id === POP_UPS && s.nextPop) {
+      badge = s.asap ? `<span class="badge open">Open now</span>` : `<span class="badge later">Pre-order</span>`;
+      const more = (s.popups || []).length - 1;
+      sub = `${s.asap ? "Today" : "Next"}: ${s.nextPop.day}, ${s.nextPop.hours}${more > 0 ? ` · +${more} more date${more > 1 ? "s" : ""}` : ""}`;
+    } else if (s.asap) { badge = `<span class="badge open">Open now</span>`; sub = s.hoursToday ? `Today ${s.hoursToday}` : ""; }
     else if (s.canOrder) { badge = `<span class="badge later">Order ahead</span>`; sub = s.nextOpen ? `Opens ${s.nextOpen.replace(/^Today /, "")}` : `Pickup later today`; }
     else { badge = `<span class="badge shut">Closed</span>`; sub = s.nextOpen ? `Opens ${s.nextOpen}` : "Not taking orders right now"; }
     return `<button class="store${s.canOrder ? "" : " closed"}" data-store="${ui.esc(s.id)}" ${s.canOrder ? "" : "disabled"}>
@@ -107,8 +98,13 @@ $("storeList").addEventListener("click", async (e) => {
 async function selectStore(store) {
   S.store = store;
   S.cart = load(`bbl-cart-${store.id}`, []);
-  $("storeName").textContent = store.id === POP_UPS && store.address ? `Pop-up · ${store.address}` : store.name;
-  $("storeHours").textContent = store.asap ? "Open now" : (store.nextOpen ? `Opens ${store.nextOpen.replace(/^Today /, "")} · order ahead` : "");
+  const pops = store.popups || [];
+  $("storeName").textContent = store.id === POP_UPS
+    ? (pops.length > 1 ? "Pop-ups · pre-order" : `Pop-up · ${store.address || ""}`)
+    : store.name;
+  $("storeHours").textContent = store.id === POP_UPS
+    ? (store.asap ? "Open now · pre-order for later dates too" : (store.nextPop ? `Next: ${store.nextPop.day}, ${store.nextPop.hours}` : ""))
+    : (store.asap ? "Open now" : (store.nextOpen ? `Opens ${store.nextOpen.replace(/^Today /, "")} · order ahead` : ""));
   $("items").innerHTML = `<p class="muted">Loading menu…</p>`;
   show("menu");
   try {
@@ -238,11 +234,21 @@ async function goCheckout() {
     S.store = withPopupPlace(stores.stores.find((s) => s.id === S.store.id)) || S.store;
     S.quote = quote;
     if (!S.store.canOrder) throw new Error(`${S.store.name} isn't taking orders right now.`);
-    $("pickupWhere").innerHTML = `<b>${ui.esc(S.store.name)}</b>${S.store.address ? `<div class="muted small">${ui.esc(S.store.address)}</div>` : ""}`;
-    const opts = [];
-    if (S.store.asap) opts.push(`<option value="ASAP">ASAP (about 15 minutes)</option>`);
-    for (const s of S.store.slots) opts.push(`<option value="${ui.esc(s.at)}">Today at ${ui.esc(s.label)}</option>`);
-    $("pickupTime").innerHTML = opts.join("");
+    if (S.store.id === POP_UPS && (S.store.popups || []).length) {
+      const pops = S.store.popups;
+      if (!pops.some((p) => p.id === chosenPopup)) chosenPopup = (pops.find((p) => p.date === wantDate) || pops[0]).id;
+      $("pickupWhere").innerHTML = `<b>Which pop-up?</b>
+        <select id="popupSel" style="margin-top:8px">${pops.map((p) =>
+          `<option value="${ui.esc(p.id)}" ${p.id === chosenPopup ? "selected" : ""}>${ui.esc(p.day)} · ${ui.esc(p.place || p.title)} (${ui.esc(p.hours)})</option>`).join("")}</select>`;
+      $("popupSel").addEventListener("change", (e) => { chosenPopup = e.target.value; fillPopupTimes(); });
+      fillPopupTimes();
+    } else {
+      $("pickupWhere").innerHTML = `<b>${ui.esc(S.store.name)}</b>${S.store.address ? `<div class="muted small">${ui.esc(S.store.address)}</div>` : ""}`;
+      const opts = [];
+      if (S.store.asap) opts.push(`<option value="ASAP">ASAP (about 15 minutes)</option>`);
+      for (const s of S.store.slots) opts.push(`<option value="${ui.esc(s.at)}">Today at ${ui.esc(s.label)}</option>`);
+      $("pickupTime").innerHTML = opts.join("");
+    }
     $("totals").innerHTML = `
       <div><span>Subtotal</span><span>${ui.fmt(quote.subtotal)}</span></div>
       <div><span>Tax</span><span>${ui.fmt(quote.tax)}</span></div>
@@ -252,6 +258,15 @@ async function goCheckout() {
     $("totals").innerHTML = "";
     $("payError").textContent = e.message;
   }
+}
+
+function fillPopupTimes() {
+  const pop = (S.store.popups || []).find((p) => p.id === chosenPopup);
+  if (!pop) return;
+  const opts = [];
+  if (pop.today && S.store.asap) opts.push(`<option value="ASAP">ASAP (about 15 minutes)</option>`);
+  for (const sl of pop.slots) opts.push(`<option value="${ui.esc(sl.at)}">${pop.today ? "Today" : ui.esc(pop.day)} at ${ui.esc(sl.label)}</option>`);
+  $("pickupTime").innerHTML = opts.join("");
 }
 
 $("payBtn").addEventListener("click", async () => {
@@ -267,8 +282,10 @@ $("payBtn").addEventListener("click", async () => {
     const r = await api("onlineCheckout", {
       locationId: S.store.id, cart: cartPayload(), name, phone,
       pickupAt: $("pickupTime").value, key: newKey(),
+      popupId: S.store.id === POP_UPS ? chosenPopup : undefined,
     });
-    save("bbl-last-order", { orderId: r.orderId, storeId: S.store.id, place: S.store.id === POP_UPS ? (S.store.address || "") : "" });
+    const pop = (S.store.popups || []).find((p) => p.id === chosenPopup);
+    save("bbl-last-order", { orderId: r.orderId, storeId: S.store.id, place: S.store.id === POP_UPS ? ((pop && pop.place) || S.store.address || "") : "" });
     window.location.href = r.url;
   } catch (e) {
     $("payError").textContent = e.message;
@@ -291,8 +308,9 @@ async function showPaid() {
         save(`bbl-cart-${last.storeId}`, []);
         $("doneTitle").textContent = st.name ? `Thanks, ${st.name}!` : "Thank you!";
         $("doneOrder").textContent = `Order #${st.orderNumber}`;
-        $("doneWhen").textContent = st.pickup === "ASAP" ? "Ready in about 15 minutes" : `Pickup today at ${st.pickup}`;
-        $("doneWhere").textContent = last.place ? `Pop-up · ${last.place}` : [st.location, st.address].filter(Boolean).join(" · ");
+        $("doneWhen").textContent = st.pickup === "ASAP" ? "Ready in about 15 minutes" : `Pickup ${st.pickup}`;
+        const place = st.popupNote ? st.popupNote.replace(/\s*\([^)]*\)$/, "") : last.place;
+        $("doneWhere").textContent = place ? `Pop-up · ${place}` : [st.location, st.address].filter(Boolean).join(" · ");
         return;
       }
     } catch (e) { /* retry */ }

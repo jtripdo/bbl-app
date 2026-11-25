@@ -15,7 +15,9 @@ export function startMs(t) {
 function dueText(iso) {
   const d = new Date(iso);
   if (!iso || isNaN(d)) return "";
-  return "Due " + d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  const time = d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  const sameDay = d.toDateString() === new Date().toDateString();
+  return "Due " + (sameDay ? time : d.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" }) + " " + time);
 }
 
 function itemHtml(t, it, i, struck) {

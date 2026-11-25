@@ -5,6 +5,9 @@ const { square } = require("./square");
 const kiosk = require("./kiosk");
 
 const ONLINE_LOCATIONS = ["LTRDX64JHBHYM", "LQZQVWG5RTABM"]; // Pasta Packs, Pop Ups
+const POP_UPS = "LQZQVWG5RTABM";
+const PREORDER_DAYS = 30;          // how far ahead pop-ups can be pre-ordered
+const DEFAULT_POPUP_HOURS = 3;     // used when a pop-up has no end time
 const PREP_MIN = 15;      // earliest pickup = now + this
 const SLOT_MIN = 15;      // pickup times every 15 minutes
 const ASAP_CUTOFF_MIN = 5; // stop ASAP orders this close to closing
@@ -112,6 +115,83 @@ function availability(loc, now = Date.now()) {
   };
 }
 
+// ---------- Pop-ups: hours come from the pop-up calendar in the BBL app ----------
+let evCache = { at: 0, list: [] };
+async function popupEvents() {
+  if (Date.now() - evCache.at < 60000) return evCache.list;
+  const { getFirestore } = require("firebase-admin/firestore");
+  const snap = await getFirestore().collection("events").where("popup", "==", true).get();
+  evCache = {
+    at: Date.now(),
+    list: snap.docs.map((d) => d.data())
+      .filter((e) => e.active !== false && /^\d{4}-\d{2}-\d{2}$/.test(e.date || "") && /^\d{1,2}:\d{2}$/.test(e.time || "")),
+  };
+  return evCache.list;
+}
+
+function dayLabel(ts, tz) {
+  return new Date(ts).toLocaleDateString("en-US", { timeZone: tz, weekday: "short", month: "short", day: "numeric" });
+}
+
+function popupAvailability(loc, events, now = Date.now()) {
+  const tz = loc.timezone || "America/New_York";
+  const today = parts(now, tz);
+  const todayKey = `${today.y}-${String(today.m).padStart(2, "0")}-${String(today.d).padStart(2, "0")}`;
+  const lastKey = new Date(Date.UTC(today.y, today.m - 1, today.d) + PREORDER_DAYS * 86400000).toISOString().slice(0, 10);
+  const step = SLOT_MIN * 60000;
+  let asap = false;
+  let asapPlace = "";
+
+  const popups = events
+    .filter((e) => e.date >= todayKey && e.date <= lastKey)
+    .map((e) => {
+      const [y, m, d] = e.date.split("-").map(Number);
+      const [sh, sm] = hm(e.time);
+      const start = zoned(y, m, d, sh, sm, tz);
+      let end = start + DEFAULT_POPUP_HOURS * 3600000;
+      if (e.endTime) {
+        const [eh, em] = hm(e.endTime);
+        end = zoned(y, m, d, eh, em, tz);
+        if (end <= start) end += 86400000;
+      }
+      if (now >= start && now < end - ASAP_CUTOFF_MIN * 60000) { asap = true; asapPlace = e.location || ""; }
+      const slots = [];
+      let t = Math.ceil(Math.max(start, now + PREP_MIN * 60000) / step) * step;
+      for (; t < end; t += step) slots.push({ at: new Date(t).toISOString(), label: label(t, tz) });
+      return {
+        id: `${e.date}T${e.time}`,
+        date: e.date,
+        today: e.date === todayKey,
+        day: e.date === todayKey ? "Today" : dayLabel(start, tz),
+        place: e.location || "",
+        title: e.title || "Pop-up",
+        hours: `${label(start, tz)} – ${label(end, tz)}`,
+        start,
+        slots,
+      };
+    })
+    .filter((p) => p.slots.length)
+    .sort((a, b) => a.start - b.start);
+
+  const next = popups[0];
+  return {
+    openNow: asap,
+    asap,
+    asapPlace,
+    canOrder: popups.length > 0,
+    popups: popups.map(({ start, ...rest }) => rest),
+    slots: popups.flatMap((p) => p.slots.map((s) => ({ ...s, label: `${p.day} · ${s.label}`, popupId: p.id }))),
+    nextOpen: next && !asap ? `${next.day} ${next.hours.split(" – ")[0]}` : "",
+    hoursToday: popups.filter((p) => p.today).map((p) => p.hours).join(", "),
+    hasHours: true,
+  };
+}
+
+async function availabilityFor(loc) {
+  if (loc.id === POP_UPS) return popupAvailability(loc, await popupEvents().catch(() => []));
+  return availability(loc);
+}
+
 // ---------- Square location details ----------
 let locCache = { at: 0, list: [] };
 async function onlineLocations() {
@@ -134,29 +214,33 @@ function addressText(a) {
 
 async function stores() {
   const locs = await onlineLocations();
-  return locs.map((l) => ({
+  return Promise.all(locs.map(async (l) => ({
     id: l.id,
     name: l.name || "",
     address: addressText(l.address),
-    ...availability(l),
-  }));
+    ...(await availabilityFor(l)),
+  })));
 }
 
 // ---------- checkout ----------
 async function checkout(b) {
   const loc = (await onlineLocations()).find((l) => l.id === b.locationId);
   if (!loc) throw new kiosk.UserError("Please choose a location.");
-  const av = availability(loc);
+  const av = await availabilityFor(loc);
   if (!av.canOrder) throw new kiosk.UserError(`${loc.name} isn't taking orders right now.`);
 
   let pickup;
+  let popupNote = "";
   if (b.pickupAt === "ASAP") {
     if (!av.asap) throw new kiosk.UserError("ASAP isn't available right now. Please pick a time.");
     pickup = { schedule_type: "ASAP", prep_time_duration: `PT${PREP_MIN}M` };
+    if (loc.id === POP_UPS && av.asapPlace) popupNote = `Pop-up: ${av.asapPlace} (today)`;
   } else {
-    const slot = av.slots.find((s) => s.at === b.pickupAt);
+    const slot = av.slots.find((s) => s.at === b.pickupAt && (!b.popupId || !s.popupId || s.popupId === b.popupId));
     if (!slot) throw new kiosk.UserError("That pickup time is no longer available. Please pick another.");
     pickup = { schedule_type: "SCHEDULED", pickup_at: slot.at };
+    const pop = (av.popups || []).find((p) => p.id === slot.popupId);
+    if (pop) popupNote = `Pop-up: ${pop.place || pop.title} (${pop.day})`;
   }
 
   if (typeof b.key !== "string" || !/^[A-Za-z0-9-]{8,40}$/.test(b.key)) throw new kiosk.UserError("Please try again.");
@@ -172,6 +256,7 @@ async function checkout(b) {
   order.fulfillments[0].pickup_details = {
     recipient: { display_name: name, phone_number: phone },
     ...pickup,
+    ...(popupNote ? { note: popupNote.slice(0, 200) } : {}),
   };
 
   const data = await square("POST", "/online-checkout/payment-links", {
@@ -198,14 +283,21 @@ async function status(orderId) {
   const d = f.pickup_details || {};
   const loc = (await onlineLocations()).find((l) => l.id === o.location_id) || {};
   const tz = loc.timezone || "America/New_York";
+  let pickupText = "ASAP";
+  if (d.schedule_type === "SCHEDULED" && d.pickup_at) {
+    const ts = Date.parse(d.pickup_at);
+    const sameDay = dayLabel(ts, tz) === dayLabel(Date.now(), tz);
+    pickupText = sameDay ? `today at ${label(ts, tz)}` : `${dayLabel(ts, tz)} at ${label(ts, tz)}`;
+  }
   return {
     paid: o.state === "COMPLETED" || (o.tenders || []).length > 0,
     orderNumber: String(o.id || "").slice(-4).toUpperCase(),
     location: loc.name || "",
     address: addressText(loc.address),
-    pickup: d.schedule_type === "SCHEDULED" && d.pickup_at ? label(Date.parse(d.pickup_at), tz) : "ASAP",
+    pickup: pickupText,
+    popupNote: String(d.note || "").startsWith("Pop-up: ") ? d.note.replace(/^Pop-up: /, "") : "",
     name: (d.recipient && d.recipient.display_name) || "",
   };
 }
 
-module.exports = { stores, checkout, status, availability, ONLINE_LOCATIONS };
+module.exports = { stores, checkout, status, availability, popupAvailability, ONLINE_LOCATIONS };
