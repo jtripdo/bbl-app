@@ -30,18 +30,34 @@ function itemHtml(t, it, i, struck) {
   </li>`;
 }
 
-function ticketHtml(t, struck) {
+function liveAtText(t, showMin) {
+  const at = new Date(Date.parse(t.dueAt) - showMin * 60000);
+  const sameDay = at.toDateString() === new Date().toDateString();
+  const time = at.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  return "Goes live " + (sameDay ? time : at.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" }) + " " + time);
+}
+
+function ticketHtml(t, struck, opts = {}) {
   const meta = [t.source, TYPES[t.fulfillmentType], t.customer, dueText(t.dueAt)]
     .filter(Boolean).map(esc).join(" · ");
   const note = t.note ? `<div class="tnote">${esc(t.note)}</div>` : "";
   const items = (t.items || []).map((it, i) => itemHtml(t, it, i, struck)).join("");
-  return `<article class="ticket${t._new ? " fresh" : ""}" data-start="${startMs(t)}">
-    <div class="thead"><span class="tnum">#${esc(t.label)}</span><span class="timer">0:00</span></div>
+  return `<article class="ticket${t._new ? " fresh" : ""}${opts.upcoming ? " upcoming" : ""}" data-start="${startMs(t)}">
+    <div class="thead"><span class="tnum">#${esc(t.label)}</span><span class="timer">${opts.upcoming ? "PRE-ORDER" : "0:00"}</span></div>
     <div class="tmeta">${meta}</div>
     ${note}
     <ul class="items">${items}</ul>
-    <button class="bump" data-bump="${esc(t.id)}">BUMP</button>
+    ${opts.upcoming
+      ? `<div class="golive">${esc(liveAtText(t, opts.showMin || 10))}</div>`
+      : `<button class="bump" data-bump="${esc(t.id)}">BUMP</button>`}
   </article>`;
+}
+
+// Read-only list of upcoming pre-orders (no bump, no timer colors).
+export function renderUpcoming(el, tickets, showMin) {
+  el.innerHTML = tickets.length
+    ? tickets.map((t) => ticketHtml(t, [], { upcoming: true, showMin })).join("")
+    : `<p class="up-empty">No upcoming pre-orders.</p>`;
 }
 
 export function renderBoard(board, tickets, struckMap) {

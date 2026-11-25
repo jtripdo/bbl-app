@@ -2,8 +2,8 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/fireba
 import {
   getFirestore, collection, query, where, onSnapshot,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-import * as cfg from "./kds-config.js?v=20261125g";
-import { renderBoard, tickTimers, startMs } from "./kds-render.js?v=20261125g";
+import * as cfg from "./kds-config.js?v=20261125h";
+import { renderBoard, renderUpcoming, tickTimers, startMs } from "./kds-render.js?v=20261125h";
 
 const db = getFirestore(initializeApp(cfg.firebaseConfig));
 const $ = (id) => document.getElementById(id);
@@ -68,8 +68,11 @@ const isLater = (t) => t.dueAt && Date.parse(t.dueAt) - Date.now() > SHOW_BEFORE
 function draw() {
   const open = state.tickets.filter((t) => !state.hidden.has(t.id));
   const shown = open.filter((t) => !isLater(t));
-  const later = open.length - shown.length;
-  $("later").textContent = later ? `+${later} later` : "";
+  const laterList = open.filter(isLater).sort((a, b) => Date.parse(a.dueAt) - Date.parse(b.dueAt));
+  const later = laterList.length;
+  $("later").textContent = `+${later} upcoming`;
+  $("later").classList.toggle("hide", later === 0);
+  if (!$("upcoming").classList.contains("hide")) renderUpcoming($("upList"), laterList, SHOW_BEFORE_MIN);
   renderBoard(board, shown, struck);
   tickTimers(board, cfg.yellowAfterMin, cfg.redAfterMin);
   $("count").textContent = shown.length;
@@ -232,3 +235,10 @@ logo.src = cfg.logoUrl;
 logo.onerror = () => { logo.style.display = "none"; };
 showLocation();
 loadLocations();
+
+// ---------- upcoming pre-orders (view only, no bump) ----------
+$("later").addEventListener("click", () => {
+  $("upcoming").classList.remove("hide");
+  draw();
+});
+$("upClose").addEventListener("click", () => $("upcoming").classList.add("hide"));
