@@ -18,5 +18,8 @@ export const functionsBase = "https://us-central1-bbl-app-d58e6.cloudfunctions.n
 export const yellowAfterMin = 8;
 export const redAfterMin = 15;
 
+// Pre-orders appear on the kitchen screen this many minutes before their pickup time.
+export const showPreordersMin = 10;
+
 // Logo shown in the top bar (file in your bbl-app repo).
 export const logoUrl = "logo-dark.png";
