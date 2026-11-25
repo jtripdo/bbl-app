@@ -4,14 +4,14 @@ import {showLogin,showRedeem,signOut,inviteCode} from './auth.js';
 import {showList} from './list.js';
 import {showPar,showParHist} from './par.js';
 import {showChat,showNeeds} from './team.js';
-import {showEvents} from './events.js';
-import {showToday} from './today.js';
+import {showEvents} from './events.js?v=20261125m';
+import {showToday} from './today.js?v=20261125m';
 import {showPeople} from './people.js';
 import {showMealPrep,showMenu,ic} from './mealprep.js';
 import {showRecipes} from './recipes.js';
 import {showMpPar,showMpParHist} from './mppar.js';
 import {showMode} from './mode.js';
-import {showPopLoad,TEMPLATE} from './popload.js';
+import {showPopLoad,TEMPLATE} from './popload.js?v=20261125m';
 
 const cur={v:'who'};
 
