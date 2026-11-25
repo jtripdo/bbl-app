@@ -13,7 +13,9 @@
 <script>
 // Open straight into this device's mode (kitchen display or kiosk). ?mode=team switches back.
 (function(){try{
-  var q=new URLSearchParams(location.search).get('mode');
+  var sp=new URLSearchParams(location.search);
+  if(sp.get('invite'))return; // invite and reset links always open the sign-up screen
+  var q=sp.get('mode');
   if(q){localStorage.setItem('bblMode',q);}
   var m=localStorage.getItem('bblMode');
   if(m==='kds')location.replace('kds.html');
@@ -31,7 +33,7 @@
   <div id="view"><p style="text-align:center">Loading...</p></div>
 </div>
 <script>window.onerror=function(m){document.getElementById('view').innerHTML='<p style="color:red;padding:20px">Error: '+m+'</p>';};</script>
-<script type="module" src="app.js?v=20261125i"></script>
+<script type="module" src="app.js?v=20261125j"></script>
 </body>
 </html>
 <!-- END -->

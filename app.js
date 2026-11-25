@@ -1,4 +1,6 @@
-import {db,S,$,esc,clearSubs,today,setView,DEFAULT_TEAM,slug,collection,doc,setDoc,onSnapshot,serverTimestamp} from './core.js';
+import {db,auth,S,$,esc,clearSubs,today,setView,doc,getDoc} from './core.js';
+import {onAuthStateChanged} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {showLogin,showRedeem,signOut,inviteCode} from './auth.js';
 import {showList} from './list.js';
 import {showPar,showParHist} from './par.js';
 import {showChat,showNeeds} from './team.js';
@@ -13,11 +15,7 @@ import {showMode} from './mode.js';
 const cur={v:'who'};
 
 function renderBar(){
-  $('#bar').innerHTML=S.me?`<span>Working as <b>${esc(S.me)}</b></span><button class="link" data-go="who">Switch</button>`:'';
-}
-
-function showWho(){
-  setView(`<h2 class="center">Who's working?</h2>`+(S.team.length?S.team.map(n=>`<button class="big" data-who="${esc(n)}">${esc(n)}</button>`).join(''):'<p class="mut center">Loading your team...</p>'));
+  $('#bar').innerHTML=S.me?`<span>Signed in as <b>${esc(S.me)}</b></span><button class="link" id="signOut">Sign out</button>`:'';
 }
 
 function showDash(){
@@ -27,11 +25,11 @@ function showDash(){
 
 function go(v,arg,title){
   clearSubs();
-  if(!S.me&&v!=='who'&&v!=='mode')v='who';
   cur.v=v;
   renderBar();
+  if(!S.me){showLogin();return;}
   const views={
-    who:showWho,dash:showDash,today:showToday,people:showPeople,par:showPar,parhist:showParHist,
+    dash:showDash,today:showToday,people:showPeople,par:showPar,parhist:showParHist,
     mealprep:showMealPrep,mpmenu:showMenu,mprecipes:showRecipes,mppar:showMpPar,mpparhist:showMpParHist,
     opening:()=>showList('opening','Opening Checklist',{note:'This list resets every day.'}),
     closing:()=>showList('closing','Closing Checklist',{note:'This list resets every day.'}),
@@ -44,29 +42,26 @@ function go(v,arg,title){
 }
 
 document.addEventListener('click',e=>{
-  const w=e.target.closest('[data-who]');
-  if(w){S.me=w.dataset.who;try{localStorage.setItem('bblName',S.me);}catch(x){}go('today');return;}
+  if(e.target.closest('#signOut')){if(confirm('Sign out of BBL on this device?'))signOut();return;}
   const t=e.target.closest('[data-go]');
   if(t)go(t.dataset.go,t.dataset.arg,t.dataset.title);
 });
 
-// Keeps the team list up to date, and fills it with the starting names the very first time
-let seeded=false;
-onSnapshot(collection(db,'team'),{includeMetadataChanges:true},snap=>{
-  if(snap.empty){
-    if(!snap.metadata.fromCache&&!seeded){
-      seeded=true;
-      DEFAULT_TEAM.forEach(n=>setDoc(doc(db,'team',slug(n)),{name:n,active:true,at:serverTimestamp()}));
-    }
+// Sign-in state: everything someone does is stamped with their own name.
+onAuthStateChanged(auth,async user=>{
+  clearSubs();
+  if(!user){
+    S.me=S.uid=S.role=S.username=null;renderBar();
+    const code=inviteCode();
+    if(code)showRedeem(code);else showLogin();
     return;
   }
-  S.team=snap.docs.map(d=>d.data()).filter(p=>p.active!==false).map(p=>p.name).sort((a,b)=>a.localeCompare(b));
-  if(S.me&&S.team.length&&!S.team.includes(S.me)){
-    S.me=null;try{localStorage.removeItem('bblName');}catch(x){}
-    go('who');return;
-  }
-  if(cur.v==='who')showWho();
+  setView('<p class="center mut">Loading…</p>');
+  let prof=null;
+  try{const snap=await getDoc(doc(db,'staff',user.uid));prof=snap.exists()?snap.data():null;}catch(e){}
+  if(!prof||prof.active===false){await signOut();showLogin('This account is not active. Ask a manager.');return;}
+  S.me=prof.name;S.uid=user.uid;S.role=prof.role||'staff';S.username=prof.username;
+  if(inviteCode()){try{history.replaceState(null,'',location.pathname);}catch(e){}}
+  go('today');
 });
-
-go(S.me?'today':'who');
 // END
