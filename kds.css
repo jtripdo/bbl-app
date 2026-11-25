@@ -77,4 +77,17 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .start-box label, .start-box p { color: var(--muted); margin: 0; }
 .start-box select { font-size: 18px; padding: 12px; border-radius: 10px; background: var(--card);
   color: var(--text); border: 1px solid var(--line); }
-.later { color: var(--muted); font-size: 15px; font-weight: 600; }
+.later { background: #2a2a2f; border: 1px solid var(--line); color: var(--accent); border-radius: 999px;
+  padding: 6px 14px; font-size: 15px; font-weight: 700; }
+.up-panel { position: fixed; inset: 0; z-index: 8; background: rgba(10,10,11,.97); overflow-y: auto;
+  padding-top: env(safe-area-inset-top); }
+.up-head { position: sticky; top: 0; display: flex; align-items: center; gap: 14px; padding: 14px; background: #141416;
+  border-bottom: 1px solid var(--line); }
+.up-head h2 { margin: 0; font-size: 22px; }
+.ticket.upcoming { border-style: dashed; }
+.ticket.upcoming .thead { background: #2a2a2f; color: var(--text); }
+.golive { margin: 6px 12px 12px; padding: 14px; border-radius: 10px; text-align: center; font-weight: 700;
+  color: var(--accent); background: #2a2410; }
+.up-empty { color: var(--muted); font-size: 20px; padding: 30px; }
+.hide { display: none !important; }
+.muted { color: var(--muted); }
