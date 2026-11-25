@@ -24,9 +24,14 @@ body { font-family: var(--body); -webkit-font-smoothing: antialiased; }
 .where b, .totals .grand, .done-when, .pkg .price b, .badge-date b, .next-sticker b {
   font-family: var(--display); font-weight: 600; letter-spacing: -0.01em; text-transform: lowercase;
 }
-.hero h1, .c-hero h1, .h-hero h1 { font-weight: 700; line-height: .92; letter-spacing: -0.015em; }
-.h2, .page-title, .cta-title { font-weight: 700; letter-spacing: -0.01em; }
-.hl { padding: 0 .08em; }
+.hero h1, .c-hero h1, .h-hero h1 { font-weight: 700; line-height: 1.04; letter-spacing: -0.015em; }
+.h2, .page-title, .cta-title { font-weight: 700; letter-spacing: -0.01em; line-height: 1.02; }
+/* Highlight sits only behind its own words, never over the line above */
+.hl {
+  background: linear-gradient(to bottom, transparent 0 18%, var(--butter) 18% 94%, transparent 94%);
+  padding: 0 .08em; line-height: inherit;
+  box-decoration-break: clone; -webkit-box-decoration-break: clone;
+}
 
 /* Header: logo on every page */
 .site-head { background: rgba(251, 248, 242, .92); backdrop-filter: saturate(1.2) blur(8px);
