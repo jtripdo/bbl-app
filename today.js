@@ -12,7 +12,7 @@ export function showToday(){
   <div class="sec">Checklists</div><div id="tl"></div>
   <div class="sec">Other</div><div id="to"></div>`);
 
-  const evCard=e=>`<div class="card"><div class="mut small">${e.date===t?'Today':dlabel(e.date)}${e.time?' · '+t12(e.time):''}</div><b>${esc(e.title)}</b>${e.location?`<div class="small mut ib">${icon('pin',14)} ${esc(e.location)}</div>`:''}<div><button class="btn sm" data-go="load" data-arg="${e.id}" data-title="${esc(e.title)}">Load Out Sheet</button></div></div>`;
+  const evCard=e=>`<div class="card"><div class="mut small">${e.date===t?'Today':dlabel(e.date)}${e.time?' · '+t12(e.time):''}</div><b>${esc(e.title)}</b>${e.location?`<div class="small mut ib">${icon('pin',14)} ${esc(e.location)}</div>`:''}<div><button class="btn sm" data-go="${e.popup?'popload':'load'}" data-arg="${e.id}" data-title="${esc(e.title)}">Load Out Sheet</button></div></div>`;
 
   const draw=()=>{
     if(!$('#te'))return;

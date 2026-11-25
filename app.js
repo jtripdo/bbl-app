@@ -11,6 +11,7 @@ import {showMealPrep,showMenu,ic} from './mealprep.js';
 import {showRecipes} from './recipes.js';
 import {showMpPar,showMpParHist} from './mppar.js';
 import {showMode} from './mode.js';
+import {showPopLoad,TEMPLATE} from './popload.js';
 
 const cur={v:'who'};
 
@@ -19,7 +20,7 @@ function renderBar(){
 }
 
 // Page access by role (set by owners on the Team screen). Owners see everything.
-const PAGE_OF={parhist:'par',mpmenu:'mealprep',mprecipes:'mealprep',mppar:'mealprep',mpparhist:'mealprep',load:'events'};
+const PAGE_OF={parhist:'par',mpmenu:'mealprep',mprecipes:'mealprep',mppar:'mealprep',mpparhist:'mealprep',load:'events',popload:'events',poptemplate:'events'};
 export const canSee=p=>S.role==='owner'||((S.access&&S.access[p])||['manager','staff']).includes(S.role);
 
 function showDash(){
@@ -41,7 +42,9 @@ function go(v,arg,title){
     cleaning:()=>showList('cleaning','Cleaning List',{note:'This list resets every day.'}),
     prep:()=>showList('prep_'+today(),'Prep Sheet',{ph:'Add a prep task (e.g. 4 lb butter, cubed)',note:'This list is just for today. Tomorrow starts fresh.'}),
     chat:showChat,needs:showNeeds,events:showEvents,mode:showMode,
-    load:()=>showList('load_'+arg,'Load Out: '+(title||'Event'),{key:'event',back:'events',ph:'Add something to load (e.g. 2 hotel pans)'})
+    load:()=>showList('load_'+arg,'Load Out: '+(title||'Event'),{key:'event',back:'events',ph:'Add something to load (e.g. 2 hotel pans)'}),
+    popload:()=>showPopLoad(arg,title),
+    poptemplate:()=>showList(TEMPLATE,'Pop-up Load Out Template',{key:'template',back:'events',ph:'Add an item every pop-up needs',note:'Every pop-up gets these items on its Load Out Sheet. Mark items "Not needed" on a single pop-up instead of removing them here.'})
   };
   (views[v]||showDash)();
 }
