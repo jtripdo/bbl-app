@@ -1,0 +1,98 @@
+/* Minimal theme for the BBL website. Loaded last on every site page.
+   Calm off-white, thin lines, the logo's tall condensed lettering for headings,
+   butter yellow only where it should pop. */
+:root {
+  --cream: #FBF8F2;   /* page */
+  --paper: #FFFFFF;   /* cards */
+  --sand: #EFE8DA;    /* soft fills */
+  --hover: #F3EDE1;
+  --line: #E4DCCB;    /* hairlines */
+  --ink: #1F1A14;
+  --brown: #5A5045;
+  --muted: #7A7064;
+  --butter: #F4B931;
+  --display: "Antonio", "Oswald", "Arial Narrow", sans-serif;
+  --body: "Inter", system-ui, -apple-system, sans-serif;
+  --mono: "DM Mono", ui-monospace, monospace;
+}
+body { font-family: var(--body); -webkit-font-smoothing: antialiased; }
+
+/* Headings: tall, narrow and lowercase like the logo */
+.hero h1, .c-hero h1, .h-hero h1, .h2, .page-title, .done h1, .cta-title, .sc-title,
+.way-name, .store-title b, .store-name, .item .name, .sheet h2, .pkg .name, .step h3,
+.promo h3, .ev-name, .none-title, .cal-head h2, .soon-card h3, .addons-title, .sent h3,
+.where b, .totals .grand, .done-when, .pkg .price b, .badge-date b, .next-sticker b {
+  font-family: var(--display); font-weight: 600; letter-spacing: -0.01em; text-transform: lowercase;
+}
+.hero h1, .c-hero h1, .h-hero h1 { font-weight: 700; line-height: .92; letter-spacing: -0.015em; }
+.h2, .page-title, .cta-title { font-weight: 700; letter-spacing: -0.01em; }
+.hl { padding: 0 .08em; }
+
+/* Header: logo on every page */
+.site-head { background: rgba(251, 248, 242, .92); backdrop-filter: saturate(1.2) blur(8px);
+  -webkit-backdrop-filter: saturate(1.2) blur(8px); border-bottom: 1px solid var(--line); }
+.head-row { padding-top: 10px; padding-bottom: 10px; }
+.brand-logo { height: 58px; width: auto; display: block; }
+.nl { font-weight: 500; font-size: 15px; color: var(--ink); }
+.nl.on, .nl[aria-current="page"] { background: transparent; box-shadow: inset 0 -2px 0 var(--butter); border-radius: 0; }
+
+/* Buttons: simple pills; butter only for the main action */
+.btn { border-width: 1.5px; font-weight: 600; }
+.btn:hover:not(:disabled) { transform: translateY(-1px); }
+.butter, .primary { box-shadow: none; border-color: var(--butter); }
+.btn.butter:hover, .primary:hover:not(:disabled) { background: #F7C552; }
+.plain, .paper, .ghost { border-color: var(--line); }
+.plain:hover, .paper:hover { border-color: var(--ink); }
+
+/* Cards and panels: thin lines, no heavy shadows */
+.store, .item, .way, .pkg, .promo, .cal-card, .soon-card, .inq-card, .line, .totals, .steps,
+.addon, .opt, .back, .icon-btn, .stepper, .cat, .pill-label, .badge, .photo, .where, .cta-band {
+  border-width: 1px; border-color: var(--line); box-shadow: none;
+}
+.store, .way, .pkg, .promo, .cal-card, .inq-card, .cta-band { border-radius: 24px; }
+.store:not(:disabled):hover, .way:hover, .item:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(31, 26, 20, .08); }
+.store:first-child:not(:disabled) { background: var(--paper); border-color: var(--ink); }
+.store.closed { background: var(--hover); }
+.badge.open { background: var(--butter); color: var(--ink); border-color: var(--butter); }
+.item img, .item .noimg { border-bottom: 1px solid var(--line); }
+.opt.on { border-color: var(--ink); background: #FFF8E6; box-shadow: none; }
+.cat.on { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.pill-label { background: transparent; }
+.eyebrow, .pill-label, .mono-num, .num { color: var(--muted); }
+
+/* Pops: keep a few bold moments */
+.way.butter-bg, .step.hot, .promo.butter-bg, .pkg.butter-card { background: var(--butter); border-color: var(--butter); }
+.way.dark, .pkg.dark, .small-crowd, .day-card { background: var(--ink); border-color: var(--ink); }
+.cta-band { background: var(--sand); border: 0; }
+.where { background: #FFF8E6; border-color: var(--butter); }
+
+/* Steps on the catering page */
+.step { border-right-width: 1px; border-color: var(--line); }
+
+/* Home hero art: keep the spinning badge, calm the frame */
+.art-back { background: var(--butter); transform: rotate(-3deg); opacity: .9; }
+.art-front { border-width: 1px; border-color: var(--line); background: var(--paper); transform: rotate(2deg); }
+.art-front img.art-logo { background: var(--paper); padding: 14%; }
+.next-sticker { border-width: 1px; border-color: var(--ink); box-shadow: 4px 4px 0 var(--butter); }
+.marquee { font-family: var(--display); font-weight: 600; text-transform: lowercase; font-size: 34px; letter-spacing: .01em; }
+
+/* Calendar */
+.day { border-width: 1px; border-color: var(--line); }
+.day.has { border-color: var(--ink); background: var(--paper); font-weight: 700; }
+.day.sel { background: var(--butter); border-color: var(--butter); }
+.soon { border-top-width: 1px; border-color: var(--line); }
+
+/* Forms */
+select, input, textarea, .inq-form input, .inq-form select, .inq-form textarea {
+  border-width: 1px; border-color: var(--line); background: var(--paper);
+}
+select:focus, input:focus, textarea:focus { outline: 2px solid var(--butter); outline-offset: 0; border-color: var(--ink); }
+
+/* Footer: light logo */
+.foot-logo { width: 150px; height: auto; display: block; }
+.site-foot { padding-top: 64px; }
+
+@media (max-width: 560px) {
+  .brand-logo { height: 48px; }
+  .nl { padding: 8px 8px; }
+}
