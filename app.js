@@ -8,6 +8,7 @@ import {showPeople} from './people.js';
 import {showMealPrep,showMenu,ic} from './mealprep.js';
 import {showRecipes} from './recipes.js';
 import {showMpPar,showMpParHist} from './mppar.js';
+import {showMode} from './mode.js';
 
 const cur={v:'who'};
 
@@ -20,13 +21,13 @@ function showWho(){
 }
 
 function showDash(){
-  const tiles=[['par','box','Par Sheets'],['opening','sun','Opening'],['closing','moon','Closing'],['cleaning','sparkles','Cleaning'],['prep','chef','Prep Sheet'],['mealprep','utensils','Meal Prep'],['chat','chat','Team Chat'],['needs','cart','Needs & Wants'],['events','calendar','Events'],['people','users','Team']];
+  const tiles=[['par','box','Par Sheets'],['opening','sun','Opening'],['closing','moon','Closing'],['cleaning','sparkles','Cleaning'],['prep','chef','Prep Sheet'],['mealprep','utensils','Meal Prep'],['chat','chat','Team Chat'],['needs','cart','Needs & Wants'],['events','calendar','Events'],['people','users','Team'],['mode','tablet','Device Mode']];
   setView(`<p class="center mut">${new Date().toLocaleDateString([], {weekday:'long',month:'long',day:'numeric'})}</p><div class="grid"><button class="tile wide" data-go="today"><span>${ic('today',24)}</span>Today</button>${tiles.map(t=>`<button class="tile" data-go="${t[0]}"><span>${ic(t[1],26)}</span>${t[2]}</button>`).join('')}</div>`);
 }
 
 function go(v,arg,title){
   clearSubs();
-  if(!S.me&&v!=='who')v='who';
+  if(!S.me&&v!=='who'&&v!=='mode')v='who';
   cur.v=v;
   renderBar();
   const views={
@@ -36,7 +37,7 @@ function go(v,arg,title){
     closing:()=>showList('closing','Closing Checklist',{note:'This list resets every day.'}),
     cleaning:()=>showList('cleaning','Cleaning List',{note:'This list resets every day.'}),
     prep:()=>showList('prep_'+today(),'Prep Sheet',{ph:'Add a prep task (e.g. 4 lb butter, cubed)',note:'This list is just for today. Tomorrow starts fresh.'}),
-    chat:showChat,needs:showNeeds,events:showEvents,
+    chat:showChat,needs:showNeeds,events:showEvents,mode:showMode,
     load:()=>showList('load_'+arg,'Load Out: '+(title||'Event'),{key:'event',back:'events',ph:'Add something to load (e.g. 2 hotel pans)'})
   };
   (views[v]||showDash)();

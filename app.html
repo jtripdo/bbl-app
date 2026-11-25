@@ -7,9 +7,19 @@
 <meta name="color-scheme" content="dark">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="BBL Staff">
+<meta name="apple-mobile-web-app-title" content="BBL">
 <link rel="apple-touch-icon" href="logo.png">
-<title>BBL Staff</title>
+<title>BBL</title>
+<script>
+// Open straight into this device's mode (kitchen display or kiosk). ?mode=team switches back.
+(function(){try{
+  var q=new URLSearchParams(location.search).get('mode');
+  if(q){localStorage.setItem('bblMode',q);}
+  var m=localStorage.getItem('bblMode');
+  if(m==='kds')location.replace('kds.html');
+  else if(m==='kiosk')location.replace('kiosk.html');
+}catch(e){}})();
+</script>
 <link rel="stylesheet" href="style.css">
 <link rel="stylesheet" href="dark.css">
 </head>
@@ -21,7 +31,7 @@
   <div id="view"><p style="text-align:center">Loading...</p></div>
 </div>
 <script>window.onerror=function(m){document.getElementById('view').innerHTML='<p style="color:red;padding:20px">Error: '+m+'</p>';};</script>
-<script type="module" src="app.js"></script>
+<script type="module" src="app.js?v=20261125i"></script>
 </body>
 </html>
 <!-- END -->
