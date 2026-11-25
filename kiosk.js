@@ -422,6 +422,7 @@ function showDone(r) {
 }
 $("doneBtn").addEventListener("click", () => { clearTimeout(doneTimer); goAttract(); });
 
+window.bblSafeToReload = () => S.screen === "attract" && !S.paying;
 // ---------- idle reset ----------
 let lastTouch = Date.now();
 let idleTimer = null;
