@@ -10,6 +10,7 @@ const sq = require("./square");
 const { syncOrder } = require("./tickets");
 const kiosk = require("./kiosk");
 const online = require("./online");
+const team = require("./team");
 
 initializeApp();
 const db = getFirestore();
@@ -188,5 +189,17 @@ exports.onlineCheckout = onRequest({ cors: true }, async (req, res) => {
     if (err instanceof kiosk.UserError) return res.status(400).json({ error: err.message });
     logger.error("Online checkout failed", { err: err.message });
     return res.status(500).json({ error: "Something went wrong. Please try again or call us." });
+  }
+});
+
+// 9) Team accounts: invites, sign-up, password reset links, remove access.
+exports.teamAccount = onRequest({ cors: true }, async (req, res) => {
+  if (req.method !== "POST") return res.status(405).json({ error: "POST only" });
+  try {
+    res.json(await team.handle(req));
+  } catch (err) {
+    if (err instanceof team.TeamError) return res.status(400).json({ error: err.message });
+    logger.error("Team account action failed", { action: (req.body || {}).action, err: err.message });
+    res.status(500).json({ error: "Something went wrong. Please try again." });
   }
 });
