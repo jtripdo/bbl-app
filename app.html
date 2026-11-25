@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#12110f">
+<meta name="color-scheme" content="dark">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="BBL Staff">
+<link rel="apple-touch-icon" href="logo.png">
+<title>BBL Staff</title>
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="dark.css">
+</head>
+<body style="background:#12110f">
+<div id="app">
+  <img class="logo" src="logo.png" alt="Buttermilk Biscuit Lab" onerror="this.style.display='none';document.getElementById('brand').style.display='block'">
+  <div id="brand" class="brand">Buttermilk Biscuit Lab</div>
+  <div id="bar"></div>
+  <div id="view"><p style="text-align:center">Loading...</p></div>
+</div>
+<script>window.onerror=function(m){document.getElementById('view').innerHTML='<p style="color:red;padding:20px">Error: '+m+'</p>';};</script>
+<script type="module" src="app.js"></script>
+</body>
+</html>
+<!-- END -->
