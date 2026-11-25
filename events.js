@@ -2,7 +2,7 @@ import {db,S,$,esc,sub,today,dd,dlabel,t12,setView,topbar,collection,doc,addDoc,
 import {icon} from './icons.js';
 
 export function showEvents(){
-  setView(topbar('Events')+`<details class="add"><summary>+ Add an event</summary><div>
+  setView(topbar('Events')+`<p class="small"><button class="link" data-go="poptemplate">Pop-up load out template</button></p><details class="add"><summary>+ Add an event</summary><div>
   <input id="et" placeholder="Event name" maxlength="120">
   <div class="two"><input id="ed" type="date"><input id="etm" type="time" aria-label="Start time"></div>
   <div class="two"><span class="mut small" style="align-self:center">Ends at (optional)</span><input id="ete" type="time" aria-label="End time"></div>
@@ -16,7 +16,7 @@ export function showEvents(){
     $('#ev').innerHTML=rows.length?rows.map(e=>`<div class="card"><div><span class="mut small">${dlabel(e.date)}${e.time?' · '+t12(e.time):''}${e.endTime?' – '+t12(e.endTime):''}</span> ${e.date===t?'<span class="tag today">TODAY</span>':''} ${e.popup?'<span class="tag">ON WEBSITE</span>':''}</div>
     <h3 style="margin:4px 0">${esc(e.title)}</h3>
     ${e.location?`<div class="ib mut">${icon('pin',16)} ${esc(e.location)}</div>`:''}${e.notes?`<div class="mut small">${esc(e.notes)}</div>`:''}
-    <div style="margin-top:8px"><button class="btn sm" data-go="load" data-arg="${e.id}" data-title="${esc(e.title)}">Load Out Sheet</button> <button class="link" data-pop="${e.id}" data-on="${e.popup?1:0}">${e.popup?'Hide from website':'Show on website'}</button> <button class="link" data-rme="${e.id}">Remove</button></div></div>`).join(''):'<p class="mut center">No upcoming events. Add one above.</p>';
+    <div style="margin-top:8px"><button class="btn sm" data-go="${e.popup?'popload':'load'}" data-arg="${e.id}" data-title="${esc(e.title)}">Load Out Sheet</button> <button class="link" data-pop="${e.id}" data-on="${e.popup?1:0}">${e.popup?'Hide from website':'Show on website'}</button> <button class="link" data-rme="${e.id}">Remove</button></div></div>`).join(''):'<p class="mut center">No upcoming events. Add one above.</p>';
   }));
   $('#ev').onclick=e=>{
     const p=e.target.closest('[data-pop]');
