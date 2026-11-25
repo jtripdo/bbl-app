@@ -2,8 +2,8 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/fireba
 import {
   getFirestore, collection, query, where, onSnapshot,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-import * as cfg from "./kds-config.js";
-import { renderBoard, tickTimers, startMs } from "./kds-render.js?v=20261125f";
+import * as cfg from "./kds-config.js?v=20261125g";
+import { renderBoard, tickTimers, startMs } from "./kds-render.js?v=20261125g";
 
 const db = getFirestore(initializeApp(cfg.firebaseConfig));
 const $ = (id) => document.getElementById(id);
@@ -62,7 +62,7 @@ function listen() {
 }
 
 // Pre-orders (scheduled pickups) stay off the board until shortly before pickup.
-const SHOW_BEFORE_MIN = 45;
+const SHOW_BEFORE_MIN = Number(cfg.showPreordersMin ?? 10);
 const isLater = (t) => t.dueAt && Date.parse(t.dueAt) - Date.now() > SHOW_BEFORE_MIN * 60000;
 
 function draw() {
