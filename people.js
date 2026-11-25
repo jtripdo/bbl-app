@@ -23,19 +23,24 @@ export async function showPeople(){
   }
   setView(topbar('Team')+`<div class="sec">Invite someone</div>
     <div class="addrow"><input id="pn" placeholder="Their name (e.g. Sam R.)" maxlength="40">
-    ${S.role==='owner'?'<select id="prole" style="max-width:130px"><option value="staff">Team</option><option value="manager">Manager</option></select>':''}
+    ${S.role==='owner'?'<select id="prole" style="max-width:130px"><option value="staff">Team</option><option value="manager">Manager</option><option value="owner">Owner</option></select>':''}
     <button class="btn" id="pa">Invite</button></div>
     <div id="pout"></div>
     <div class="sec">On the team</div><div id="pl"><p class="mut small">Loading…</p></div>
     <div class="sec">Invites waiting</div><div id="pi"></div>
+    ${S.role==='owner'?'<div class="sec">Page access</div><p class="mut small">Choose which pages Managers and Team members can open. Owners always see everything.</p><div id="pacc"></div>':''}
     <p class="mut small">Removing someone signs them out and turns off their login. Everything they already did stays on record.</p>`);
   const load=async()=>{
     try{
       const d=await teamApi('list');
       if(!$('#pl'))return;
-      $('#pl').innerHTML=d.staff.map(p=>`<div class="row"><div class="txt"><b>${esc(p.name)}</b>${p.uid===d.me?' <span class="mut small">(you)</span>':''}<div class="mut small">@${esc(p.username)} · ${ROLE[p.role]||'Team'}</div></div>
-        <button class="link" data-reset="${esc(p.uid)}" data-nm="${esc(p.name)}">Reset link</button>
-        ${p.role!=='owner'&&p.uid!==d.me?`<button class="x" data-rm="${esc(p.uid)}" data-nm="${esc(p.name)}" aria-label="Remove">✕</button>`:''}</div>`).join('');
+      const owner=d.myRole==='owner';
+      const mine=p=>owner||(p.role||'staff')==='staff';
+      $('#pl').innerHTML=d.staff.map(p=>`<div class="row"><div class="txt"><b>${esc(p.name)}</b>${p.uid===d.me?' <span class="mut small">(you)</span>':''}<div class="mut small">@${esc(p.username)}${owner&&p.uid!==d.me?'':' · '+(ROLE[p.role]||'Team')}</div>
+        ${owner&&p.uid!==d.me?`<select data-role="${esc(p.uid)}" data-nm="${esc(p.name)}" style="margin-top:6px;max-width:140px">${['staff','manager','owner'].map(r=>`<option value="${r}" ${r===(p.role||'staff')?'selected':''}>${ROLE[r]}</option>`).join('')}</select>`:''}</div>
+        ${mine(p)||p.uid===d.me?`<button class="link" data-reset="${esc(p.uid)}" data-nm="${esc(p.name)}">Reset link</button>`:''}
+        ${p.uid!==d.me&&mine(p)?`<button class="x" data-rm="${esc(p.uid)}" data-nm="${esc(p.name)}" aria-label="Remove">✕</button>`:''}</div>`).join('');
+      if(owner&&$('#pacc'))drawAccess(d.access);
       $('#pi').innerHTML=d.invites.length?d.invites.map(i=>`<div class="row"><div class="txt">${esc(i.name)} <span class="mut small">· ${ROLE[i.role]||'Team'}</span></div>
         <button class="link" data-resend="${esc(i.code)}" data-nm="${esc(i.name)}">Send again</button>
         <button class="x" data-cancel="${esc(i.code)}" data-nm="${esc(i.name)}" aria-label="Cancel invite">✕</button></div>`).join(''):'<p class="mut small">None.</p>';
@@ -52,6 +57,27 @@ export async function showPeople(){
       load();
     }catch(e){alert(e.message);}
     $('#pa').disabled=false;
+  };
+  const LABEL={today:'Today',par:'Par Sheets',opening:'Opening',closing:'Closing',cleaning:'Cleaning',prep:'Prep Sheet',mealprep:'Meal Prep',chat:'Team Chat',needs:'Needs & Wants',events:'Events',people:'Team',mode:'Device Mode'};
+  const drawAccess=acc=>{
+    $('#pacc').innerHTML=`<div class="card"><div class="row" style="font-weight:700"><div class="txt">Page</div><div style="width:80px;text-align:center">Manager</div><div style="width:80px;text-align:center">Team</div></div>
+      ${Object.keys(LABEL).map(pg=>`<div class="row"><div class="txt">${LABEL[pg]}</div>
+        ${['manager','staff'].map(r=>`<label style="width:80px;text-align:center"><input type="checkbox" data-acc="${pg}" data-r="${r}" ${(acc[pg]||[]).includes(r)?'checked':''} style="width:22px;height:22px"></label>`).join('')}</div>`).join('')}
+      <button class="btn" id="accSave" style="margin-top:10px">Save page access</button> <span id="accMsg" class="mut small"></span></div>`;
+    $('#accSave').onclick=async()=>{
+      const access={};
+      Object.keys(LABEL).forEach(pg=>{access[pg]=[...document.querySelectorAll(`[data-acc="${pg}"]:checked`)].map(x=>x.dataset.r);});
+      $('#accSave').disabled=true;
+      try{await teamApi('setAccess',{access});S.access=access;$('#accMsg').textContent='Saved. Changes apply next time people open the app.';}
+      catch(x){alert(x.message);}
+      $('#accSave').disabled=false;
+    };
+  };
+  $('#view').onchange=async e=>{
+    const sel=e.target.closest('[data-role]');
+    if(!sel)return;
+    if(!confirm(`Make ${sel.dataset.nm} ${ROLE[sel.value]}?`)){load();return;}
+    try{await teamApi('setRole',{uid:sel.dataset.role,role:sel.value});load();}catch(x){alert(x.message);load();}
   };
   $('#pa').onclick=invite;
   $('#pn').onkeydown=e=>{if(e.key==='Enter')invite();};
