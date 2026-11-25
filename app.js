@@ -1,4 +1,4 @@
-import {db,auth,S,$,esc,clearSubs,today,setView,doc,getDoc} from './core.js';
+import {db,auth,S,$,esc,clearSubs,today,setView,teamApi} from './core.js';
 import {onAuthStateChanged} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {showLogin,showRedeem,signOut,inviteCode} from './auth.js';
 import {showList} from './list.js';
@@ -57,9 +57,12 @@ onAuthStateChanged(auth,async user=>{
     return;
   }
   setView('<p class="center mut">Loading…</p>');
-  let prof=null;
-  try{const snap=await getDoc(doc(db,'staff',user.uid));prof=snap.exists()?snap.data():null;}catch(e){}
-  if(!prof||prof.active===false){await signOut();showLogin('This account is not active. Ask a manager.');return;}
+  let prof=null,why='This account is not active. Ask a manager.';
+  for(let i=0;i<2&&!prof;i++){
+    try{prof=await teamApi('me');}
+    catch(e){why=e.message;if(/internet|fetch|network/i.test(why)){why='No internet connection. Try again.';break;}}
+  }
+  if(!prof){await signOut();showLogin(why);return;}
   S.me=prof.name;S.uid=user.uid;S.role=prof.role||'staff';S.username=prof.username;
   if(inviteCode()){try{history.replaceState(null,'',location.pathname);}catch(e){}}
   go('today');

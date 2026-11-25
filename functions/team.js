@@ -93,6 +93,10 @@ async function handle(req) {
     case "status":
       return { hasOwner: await hasOwner() };
 
+    case "me": // the signed-in person's own profile
+      if (!who) throw new TeamError("This account is not active. Ask a manager.");
+      return { name: who.name, role: who.role || "staff", username: who.username };
+
     case "setupOwner": { // only works once, before anyone has an account
       if (await hasOwner()) throw new TeamError("Setup is already done. Please sign in.");
       const uid = await createAccount({
