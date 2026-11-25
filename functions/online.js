@@ -8,7 +8,7 @@ const ONLINE_LOCATIONS = ["LTRDX64JHBHYM", "LQZQVWG5RTABM"]; // Pasta Packs, Pop
 const PREP_MIN = 15;      // earliest pickup = now + this
 const SLOT_MIN = 15;      // pickup times every 15 minutes
 const ASAP_CUTOFF_MIN = 5; // stop ASAP orders this close to closing
-const SITE = "https://jtripdo.github.io/bbl-app/order.html";
+const SITE = "https://buttermilkbiscuitlab.com/order.html";
 const DAYS = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
 
 // ---------- time zone helpers ----------
