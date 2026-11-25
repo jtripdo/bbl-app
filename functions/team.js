@@ -43,6 +43,22 @@ async function caller(req) {
   } catch (e) { return null; }
 }
 const isManager = (who) => who && (who.role === "owner" || who.role === "manager");
+const isOwner = (who) => who && who.role === "owner";
+const ROLES = ["owner", "manager", "staff"];
+
+// Which roles can open each page of the team app. Owners always see everything.
+const PAGES = ["today", "par", "opening", "closing", "cleaning", "prep", "mealprep", "chat", "needs", "events", "people", "mode"];
+const DEFAULT_ACCESS = Object.fromEntries(PAGES.map((p) => [p, p === "people" ? ["manager"] : ["manager", "staff"]]));
+async function getAccess() {
+  const snap = await db().collection("settings").doc("access").get();
+  const saved = snap.exists ? snap.data().pages || {} : {};
+  return Object.fromEntries(PAGES.map((p) => [p, Array.isArray(saved[p]) ? saved[p] : DEFAULT_ACCESS[p]]));
+}
+// Managers can only act on Team members; owners can act on anyone.
+function canManage(who, target) {
+  if (isOwner(who)) return true;
+  return isManager(who) && (target.role || "staff") === "staff";
+}
 
 async function hasOwner() {
   const s = await db().collection("staff").where("role", "==", "owner").limit(1).get();
@@ -95,7 +111,30 @@ async function handle(req) {
 
     case "me": // the signed-in person's own profile
       if (!who) throw new TeamError("This account is not active. Ask a manager.");
-      return { name: who.name, role: who.role || "staff", username: who.username };
+      return { name: who.name, role: who.role || "staff", username: who.username, access: await getAccess() };
+
+    case "setAccess": {
+      if (!isOwner(who)) throw new TeamError("Only owners can change page access.");
+      const pages = {};
+      for (const p of PAGES) {
+        const want = (b.access && Array.isArray(b.access[p])) ? b.access[p] : DEFAULT_ACCESS[p];
+        pages[p] = want.filter((r) => r === "manager" || r === "staff");
+      }
+      await db().collection("settings").doc("access").set({ pages, by: who.name, at: FieldValue.serverTimestamp() });
+      return { ok: true, access: pages };
+    }
+
+    case "setRole": {
+      if (!isOwner(who)) throw new TeamError("Only owners can change roles.");
+      const role = String(b.role || "");
+      if (!ROLES.includes(role)) throw new TeamError("Unknown role.");
+      const ref = db().collection("staff").doc(String(b.uid || "x"));
+      const snap = await ref.get();
+      if (!snap.exists || snap.data().active === false) throw new TeamError("Team member not found.");
+      if (snap.id === who.uid) throw new TeamError("You can't change your own role.");
+      await ref.update({ role, roleBy: who.name, roleAt: FieldValue.serverTimestamp() });
+      return { ok: true };
+    }
 
     case "setupOwner": { // only works once, before anyone has an account
       if (await hasOwner()) throw new TeamError("Setup is already done. Please sign in.");
@@ -134,6 +173,9 @@ async function handle(req) {
       const now = Date.now();
       return {
         me: who.uid,
+        myRole: who.role,
+        access: await getAccess(),
+        pages: PAGES,
         staff: staff.docs.map((d) => ({ uid: d.id, ...d.data(), createdAt: null }))
           .filter((s) => s.active !== false).sort((a, c) => a.name.localeCompare(c.name)),
         invites: invites.docs.map((d) => ({ code: d.id, ...d.data() }))
@@ -144,7 +186,7 @@ async function handle(req) {
 
     case "invite": {
       if (!isManager(who)) throw new TeamError("Only managers can invite people.");
-      const role = b.role === "manager" && who.role === "owner" ? "manager" : "staff";
+      const role = isOwner(who) && ROLES.includes(b.role) ? b.role : "staff";
       const code = newCode();
       await db().collection("invites").doc(code).set({
         kind: "invite", name: cleanName(b.name), role, used: false, by: who.name,
@@ -166,7 +208,7 @@ async function handle(req) {
       const snap = await db().collection("staff").doc(String(b.uid || "x")).get();
       if (!snap.exists) throw new TeamError("Team member not found.");
       const s = snap.data();
-      if (s.role === "owner" && who.uid !== snap.id) throw new TeamError("Only the owner can reset the owner's password.");
+      if (snap.id !== who.uid && !canManage(who, s)) throw new TeamError("Only owners can reset a manager's or owner's password.");
       const code = newCode();
       await db().collection("invites").doc(code).set({
         kind: "reset", uid: snap.id, name: s.name, username: s.username, used: false, by: who.name,
@@ -181,8 +223,8 @@ async function handle(req) {
       const ref = db().collection("staff").doc(String(b.uid || "x"));
       const snap = await ref.get();
       if (!snap.exists) throw new TeamError("Team member not found.");
-      if (snap.data().role === "owner") throw new TeamError("The owner can't be removed.");
       if (snap.id === who.uid) throw new TeamError("You can't remove yourself.");
+      if (!canManage(who, snap.data())) throw new TeamError("Only owners can remove managers or owners.");
       await getAuth().deleteUser(snap.id).catch(() => {}); // signs them out everywhere and frees the username
       await ref.update({ active: false, removedBy: who.name, removedAt: FieldValue.serverTimestamp() });
       await db().collection("usernames").doc(snap.data().username).delete().catch(() => {});
