@@ -1,4 +1,7 @@
 import { functionsBase } from "./kiosk-config.js";
+import { firebaseConfig } from "./kds-config.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getFirestore, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-lite.js";
 import * as ui from "./kiosk-ui.js";
 
 const $ = (id) => document.getElementById(id);
@@ -28,18 +31,59 @@ const cartSubtotal = () => S.cart.reduce((n, l) => n + l.unit * l.qty, 0);
 const saveCart = () => S.store && save(`bbl-cart-${S.store.id}`, S.cart);
 
 // ---------- locations ----------
+// Pop-ups always order from the "BBL Pop Ups" Square location.
+// Links like order.html?loc=popups skip the location step entirely.
+const POP_UPS = "LQZQVWG5RTABM";
+const LOC_ALIASES = { popups: POP_UPS, popup: POP_UPS, "pop-ups": POP_UPS, pastapacks: "LTRDX64JHBHYM" };
+let wantLoc = (() => {
+  const v = new URLSearchParams(location.search).get("loc");
+  return v ? (LOC_ALIASES[v.toLowerCase()] || v) : null;
+})();
+
+// Today's pop-up from the calendar (where to pick up), if there is one.
+let popupInfo = null;
+async function loadPopupInfo() {
+  try {
+    const db = getFirestore(initializeApp(firebaseConfig));
+    const snap = await getDocs(query(collection(db, "events"), where("popup", "==", true)));
+    const n = new Date();
+    const today = `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}-${String(n.getDate()).padStart(2, "0")}`;
+    const ev = snap.docs.map((d) => d.data())
+      .filter((e) => e.active !== false && e.date === today)
+      .sort((a, b) => (a.time || "").localeCompare(b.time || ""))[0];
+    popupInfo = ev ? { place: ev.location || "", title: ev.title || "" } : null;
+  } catch (e) { popupInfo = null; }
+}
+
+function withPopupPlace(store) {
+  if (store && store.id === POP_UPS && popupInfo && popupInfo.place) {
+    return { ...store, address: popupInfo.place, popupTitle: popupInfo.title };
+  }
+  return store;
+}
+
 async function loadStores() {
   show("stores");
   try {
-    S.stores = (await api("onlineStores")).stores;
+    const [res] = await Promise.all([api("onlineStores"), loadPopupInfo()]);
+    S.stores = res.stores.map(withPopupPlace);
+    if (wantLoc) {
+      const only = S.stores.find((s) => s.id === wantLoc);
+      wantLoc = null; // "change location" later shows the full list
+      if (only && only.canOrder) return selectStore(only);
+      if (only) return drawStores([only], true);
+    }
     drawStores();
   } catch (e) {
     $("storeList").innerHTML = `<p class="error center-text">${ui.esc(e.message)}</p>`;
   }
 }
 
-function drawStores() {
-  $("storeList").innerHTML = S.stores.map((s) => {
+function drawStores(list = S.stores, single = false) {
+  const extra = single ? `<p class="muted">${list[0].id === POP_UPS
+    ? "Pop-up ordering opens when the pop-up starts. Check the <a href=\"popups.html\">pop-up calendar</a> for the next date."
+    : "This location isn't taking orders right now."} <a href="order.html">See all locations</a></p>` : "";
+  $("storeList").innerHTML = list.map((s) => {
     let badge, sub;
     if (s.asap) { badge = `<span class="badge open">Open now</span>`; sub = s.hoursToday ? `Today ${s.hoursToday}` : ""; }
     else if (s.canOrder) { badge = `<span class="badge later">Order ahead</span>`; sub = s.nextOpen ? `Opens ${s.nextOpen.replace(/^Today /, "")}` : `Pickup later today`; }
@@ -49,7 +93,7 @@ function drawStores() {
       ${s.address ? `<div class="muted">${ui.esc(s.address)}</div>` : ""}
       <div class="muted small">${ui.esc(sub)}</div>
     </button>`;
-  }).join("") || `<p class="muted center-text">No locations are taking orders right now.</p>`;
+  }).join("") + extra || `<p class="muted center-text">No locations are taking orders right now.</p>`;
 }
 
 $("storeList").addEventListener("click", async (e) => {
@@ -57,9 +101,13 @@ $("storeList").addEventListener("click", async (e) => {
   if (!b) return;
   const store = S.stores.find((s) => s.id === b.dataset.store);
   if (!store || !store.canOrder) return;
+  selectStore(store);
+});
+
+async function selectStore(store) {
   S.store = store;
   S.cart = load(`bbl-cart-${store.id}`, []);
-  $("storeName").textContent = store.name;
+  $("storeName").textContent = store.id === POP_UPS && store.address ? `Pop-up · ${store.address}` : store.name;
   $("storeHours").textContent = store.asap ? "Open now" : (store.nextOpen ? `Opens ${store.nextOpen.replace(/^Today /, "")} · order ahead` : "");
   $("items").innerHTML = `<p class="muted">Loading menu…</p>`;
   show("menu");
@@ -73,7 +121,7 @@ $("storeList").addEventListener("click", async (e) => {
   } catch (e) {
     $("items").innerHTML = `<p class="error">${ui.esc(e.message)}</p>`;
   }
-});
+}
 
 $("changeStore").addEventListener("click", loadStores);
 
@@ -187,7 +235,7 @@ async function goCheckout() {
       api("onlineStores"),
       api("kioskCheckout", { action: "quote", locationId: S.store.id, cart: cartPayload() }),
     ]);
-    S.store = stores.stores.find((s) => s.id === S.store.id) || S.store;
+    S.store = withPopupPlace(stores.stores.find((s) => s.id === S.store.id)) || S.store;
     S.quote = quote;
     if (!S.store.canOrder) throw new Error(`${S.store.name} isn't taking orders right now.`);
     $("pickupWhere").innerHTML = `<b>${ui.esc(S.store.name)}</b>${S.store.address ? `<div class="muted small">${ui.esc(S.store.address)}</div>` : ""}`;
@@ -220,7 +268,7 @@ $("payBtn").addEventListener("click", async () => {
       locationId: S.store.id, cart: cartPayload(), name, phone,
       pickupAt: $("pickupTime").value, key: newKey(),
     });
-    save("bbl-last-order", { orderId: r.orderId, storeId: S.store.id });
+    save("bbl-last-order", { orderId: r.orderId, storeId: S.store.id, place: S.store.id === POP_UPS ? (S.store.address || "") : "" });
     window.location.href = r.url;
   } catch (e) {
     $("payError").textContent = e.message;
@@ -244,7 +292,7 @@ async function showPaid() {
         $("doneTitle").textContent = st.name ? `Thanks, ${st.name}!` : "Thank you!";
         $("doneOrder").textContent = `Order #${st.orderNumber}`;
         $("doneWhen").textContent = st.pickup === "ASAP" ? "Ready in about 15 minutes" : `Pickup today at ${st.pickup}`;
-        $("doneWhere").textContent = [st.location, st.address].filter(Boolean).join(" · ");
+        $("doneWhere").textContent = last.place ? `Pop-up · ${last.place}` : [st.location, st.address].filter(Boolean).join(" · ");
         return;
       }
     } catch (e) { /* retry */ }
