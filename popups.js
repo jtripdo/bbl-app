@@ -79,8 +79,8 @@ function drawSelected() {
   $("selLabel").textContent = S.sel === todayKey ? `Today · ${label}` : label;
   const evs = S.events.filter((e) => e.date === S.sel);
   const btn = $("dayOrder");
-  btn.href = evs.length ? "order.html?loc=popups" : "order.html";
-  btn.textContent = evs.length ? (S.sel === todayKey ? "Order from the pop-up" : "Order from this pop-up") : "Order ahead";
+  btn.href = evs.length ? `order.html?loc=popups&date=${S.sel}` : "order.html";
+  btn.textContent = evs.length ? (S.sel === todayKey ? "Order from the pop-up" : "Pre-order for this pop-up") : "Order ahead";
   $("selBody").innerHTML = evs.length ? evs.map((e) => `
     <div class="ev">
       <div class="ev-name">${esc(e.title)}</div>

@@ -77,3 +77,4 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .start-box label, .start-box p { color: var(--muted); margin: 0; }
 .start-box select { font-size: 18px; padding: 12px; border-radius: 10px; background: var(--card);
   color: var(--text); border: 1px solid var(--line); }
+.later { color: var(--muted); font-size: 15px; font-weight: 600; }

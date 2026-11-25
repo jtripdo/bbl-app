@@ -3,7 +3,7 @@ import {
   getFirestore, collection, query, where, onSnapshot,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import * as cfg from "./kds-config.js";
-import { renderBoard, tickTimers, startMs } from "./kds-render.js";
+import { renderBoard, tickTimers, startMs } from "./kds-render.js?v=20261125f";
 
 const db = getFirestore(initializeApp(cfg.firebaseConfig));
 const $ = (id) => document.getElementById(id);
@@ -61,8 +61,15 @@ function listen() {
   });
 }
 
+// Pre-orders (scheduled pickups) stay off the board until shortly before pickup.
+const SHOW_BEFORE_MIN = 45;
+const isLater = (t) => t.dueAt && Date.parse(t.dueAt) - Date.now() > SHOW_BEFORE_MIN * 60000;
+
 function draw() {
-  const shown = state.tickets.filter((t) => !state.hidden.has(t.id));
+  const open = state.tickets.filter((t) => !state.hidden.has(t.id));
+  const shown = open.filter((t) => !isLater(t));
+  const later = open.length - shown.length;
+  $("later").textContent = later ? `+${later} later` : "";
   renderBoard(board, shown, struck);
   tickTimers(board, cfg.yellowAfterMin, cfg.redAfterMin);
   $("count").textContent = shown.length;
@@ -160,6 +167,13 @@ function toast(msg) {
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => el.classList.remove("show"), 4000);
 }
+
+let lastLaterKey = "";
+setInterval(() => {
+  // re-draw when a pre-order reaches its show time
+  const key = state.tickets.filter(isLater).map((t) => t.id).join(",");
+  if (key !== lastLaterKey) { lastLaterKey = key; draw(); }
+}, 30000);
 
 setInterval(() => {
   $("clock").textContent = new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
