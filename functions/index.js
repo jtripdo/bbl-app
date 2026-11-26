@@ -10,6 +10,7 @@ const sq = require("./square");
 const { syncOrder } = require("./tickets");
 const kiosk = require("./kiosk");
 const online = require("./online");
+const backoffice = require("./backoffice");
 const team = require("./team");
 
 initializeApp();
@@ -201,5 +202,18 @@ exports.teamAccount = onRequest({ cors: true }, async (req, res) => {
     if (err instanceof team.TeamError) return res.status(400).json({ error: err.message });
     logger.error("Team account action failed", { action: (req.body || {}).action, err: err.message });
     res.status(500).json({ error: "Something went wrong. Please try again." });
+  }
+});
+
+// 10) Back Office: Square sales and menu for food cost (owners/managers).
+exports.backOffice = onRequest({ cors: true, timeoutSeconds: 120 }, async (req, res) => {
+  if (req.method !== "POST") return res.status(405).json({ error: "POST only" });
+  try {
+    res.set("Cache-Control", "no-store");
+    res.json(await backoffice.handle(req));
+  } catch (err) {
+    if (err instanceof backoffice.BOError) return res.status(400).json({ error: err.message });
+    logger.error("Back office failed", { action: (req.body || {}).action, err: err.message });
+    res.status(500).json({ error: "Couldn't load Square data. Please try again." });
   }
 });
