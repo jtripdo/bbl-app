@@ -75,6 +75,8 @@ export function showBO(){
     <button class="tile" data-go="boprod">Products & Prices</button>
     <button class="tile" data-go="borec">Recipe Costing</button>
     <button class="tile" data-go="bocount">Inventory Count</button>
+    <button class="tile" data-go="boforecast">Prep Forecast</button>
+    <button class="tile" data-go="labels">Prep & Labels</button>
     <button class="tile wide" data-go="bopl">Food Cost & P&L</button>
   </div>
   <div class="sec">Price alerts</div><div id="alerts"><p class="mut small">Loading…</p></div>`);

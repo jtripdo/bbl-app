@@ -171,12 +171,35 @@ async function scan(images, known) {
   throw new Error("No invoice model available: " + lastErr);
 }
 
+// Item sales on the same weekday for the last few weeks, for the prep forecast.
+async function history(date, weeks) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new BOError("Pick a valid date.");
+  const n = Math.min(Math.max(Number(weeks) || 6, 2), 10);
+  const [y, m, d] = date.split("-").map(Number);
+  const todayKey = dayOf(new Date().toISOString());
+  const dates = [];
+  for (let i = 1; dates.length < n && i <= 20; i++) {
+    const k = new Date(Date.UTC(y, m - 1, d - 7 * i)).toISOString().slice(0, 10);
+    if (k < todayKey) dates.push(k);
+  }
+  const days = await Promise.all(dates.map((k) => sales(k, k)));
+  return {
+    date,
+    days: days.map((r, i) => ({
+      date: dates[i],
+      sales: r.days.reduce((a, x) => a + x.sales, 0),
+      items: Object.fromEntries(r.items.map((it) => [it.name, it.qty])),
+    })),
+  };
+}
+
 async function handle(req) {
   await allowed(req);
   const b = req.body || {};
   if (b.action === "sales") return sales(String(b.from || ""), String(b.to || ""));
   if (b.action === "menu") return menu();
   if (b.action === "scan") return scan(b.images, b.known);
+  if (b.action === "history") return history(String(b.date || ""), b.weeks);
   throw new BOError("Unknown action.");
 }
 
