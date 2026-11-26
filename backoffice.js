@@ -75,6 +75,8 @@ export function showBO(){
     <button class="tile" data-go="boprod">Products & Prices</button>
     <button class="tile" data-go="borec">Recipe Costing</button>
     <button class="tile" data-go="bocount">Inventory Count</button>
+    <button class="tile" data-go="boforecast">Prep Forecast</button>
+    <button class="tile" data-go="labels">Prep & Labels</button>
     <button class="tile wide" data-go="bopl">Food Cost & P&L</button>
   </div>
   <div class="sec">Price alerts</div><div id="alerts"><p class="mut small">Loading…</p></div>`);
@@ -108,6 +110,8 @@ export function showInvoices(){
 
 export function showInvoiceForm(id){
   setView(STYLE+topbar(id?'Invoice':'Enter an invoice','boinv')+`
+  ${id?'':`<label class="btn full" style="display:block;text-align:center;margin-top:0">📷 Snap the invoice<input id="scan" type="file" accept="image/*" capture="environment" multiple hidden></label>
+  <p class="mut small" id="scanMsg" style="margin-top:-8px">Take a photo (or up to 4 for long invoices). The lines fill in below so you can check them before saving.</p>`}
   <div class="card">
     <input id="iv" list="ivs" placeholder="Vendor (e.g. Sysco, Restaurant Depot)" maxlength="60"><datalist id="ivs"></datalist>
     <div class="two"><input id="idt" type="date"><input id="inum" placeholder="Invoice # (optional)" maxlength="40"></div>
@@ -122,12 +126,12 @@ export function showInvoiceForm(id){
   <p id="imsg" class="mut small"></p>`);
   let prods=[],inv=null;
   $('#idt').value=today();
-  const lineHtml=(l={})=>`<div class="bo-line" data-l><input data-f="name" list="pl" placeholder="Product" maxlength="80" value="${esc(l.name||'')}"><input data-f="qty" inputmode="decimal" placeholder="Qty" value="${l.qty??''}"><input data-f="total" inputmode="decimal" placeholder="$" value="${l.total??''}"><button class="x" data-rml>✕</button></div>`;
-  const read=()=>[...document.querySelectorAll('[data-l]')].map(r=>({name:r.querySelector('[data-f=name]').value.trim(),qty:num(r.querySelector('[data-f=qty]').value),total:num(r.querySelector('[data-f=total]').value)})).filter(l=>l.name);
+  const lineHtml=(l={})=>`<div class="bo-line" data-l data-unit="${esc(l.unit||'')}"><input data-f="name" list="pl" placeholder="Product" maxlength="80" value="${esc(l.name||'')}"><input data-f="qty" inputmode="decimal" placeholder="Qty" value="${l.qty??''}"><input data-f="total" inputmode="decimal" placeholder="$" value="${l.total??''}"><button class="x" data-rml>✕</button></div>`;
+  const read=()=>[...document.querySelectorAll('[data-l]')].map(r=>({unit:r.dataset.unit||'',name:r.querySelector('[data-f=name]').value.trim(),qty:num(r.querySelector('[data-f=qty]').value),total:num(r.querySelector('[data-f=total]').value)})).filter(l=>l.name);
   const tally=()=>{
     const ls=read();$('#itot').textContent=money(ls.reduce((a,l)=>a+l.total,0));
     const fresh=[...new Set(ls.filter(l=>!findProd(prods,l.name)).map(l=>l.name))];
-    $('#new').innerHTML=fresh.length?'New products will be added: '+fresh.map(esc).join(', ')+'. Set their units under Products & Prices.':'';
+    $('#new').innerHTML=fresh.length?'New products will be added: '+fresh.map(esc).join(', ')+'. Check their units under Products & Prices.':'';
   };
   const addLine=l=>{$('#lines').insertAdjacentHTML('beforeend',lineHtml(l));};
   watchProducts(list=>{prods=list;$('#pl').innerHTML=prodOpts(list);$('#ivs').innerHTML=[...new Set(list.map(p=>p.vendor).filter(Boolean))].map(v=>`<option value="${esc(v)}">`).join('');tally();});
@@ -147,6 +151,21 @@ export function showInvoiceForm(id){
   });
   $('#lines').addEventListener('click',e=>{if(e.target.closest('[data-rml]')){e.target.closest('[data-l]').remove();tally();}});
   $('#addl').onclick=()=>addLine();
+  if(!id)$('#scan').onchange=async e=>{
+    const files=[...e.target.files].slice(0,4);e.target.value='';if(!files.length)return;
+    $('#scanMsg').innerHTML='<b>Reading the invoice…</b> this takes about 10–20 seconds.';
+    try{
+      const images=await Promise.all(files.map(shrink));
+      const r=await boApi('scan',{images,known:prods.map(p=>p.name)});
+      if(r.vendor&&!$('#iv').value.trim())$('#iv').value=r.vendor;
+      if(r.date)$('#idt').value=r.date;
+      if(r.invoiceNumber)$('#inum').value=r.invoiceNumber;
+      $('#lines').innerHTML='';(r.lines||[]).forEach(l=>addLine({name:(findProd(prods,l.name)||{}).name||l.name,qty:l.qty,unit:l.unit,total:l.total.toFixed(2)}));addLine();tally();
+      const sum=(r.lines||[]).reduce((a,l)=>a+l.total,0);
+      const off=r.invoiceTotal&&Math.abs(r.invoiceTotal-sum)>0.05;
+      $('#scanMsg').innerHTML=`Found ${(r.lines||[]).length} lines. <b>Check each one</b>, then save.`+(off?` <span class="warn">Lines add up to ${money(sum)} but the invoice says ${money(r.invoiceTotal)} (tax or fees may explain it).</span>`:'');
+    }catch(err){$('#scanMsg').innerHTML=`<span class="bad">${esc(err.message)}</span> You can still type the lines in.`;}
+  };
   if(id)$('#idel').onclick=async()=>{if(!confirm('Delete this invoice? Product prices already updated from it stay as they are.'))return;await deleteDoc(doc(db,'boInvoices',id));document.querySelector('[data-go=boinv]').click();};
   $('#isave').onclick=async()=>{
     const vendor=$('#iv').value.trim(),date=$('#idt').value,ls=read();
@@ -161,7 +180,7 @@ export function showInvoiceForm(id){
         let p=findProd(prods,l.name);
         const unitPrice=Math.round(l.total/l.qty*10000)/10000;
         if(!p){
-          const ref=await addDoc(collection(db,'boProducts'),{name:l.name,unit:'',category:'',vendor,lastPrice:unitPrice,prevPrice:null,lastDate:date,by:S.me,at:serverTimestamp(),active:true});
+          const ref=await addDoc(collection(db,'boProducts'),{name:l.name,unit:l.unit||'',category:'',vendor,lastPrice:unitPrice,prevPrice:null,lastDate:date,by:S.me,at:serverTimestamp(),active:true});
           p={id:ref.id,name:l.name,unit:'',lastPrice:unitPrice,lastDate:date};prods.push(p);
         } else if(!p.lastDate||date>=p.lastDate){
           // Newest invoice sets the current price; older ones only go into history
@@ -178,6 +197,16 @@ export function showInvoiceForm(id){
       document.querySelector('[data-go=boinv]').click();
     }catch(e){$('#imsg').textContent='Couldn\'t save: '+e.message;$('#isave').disabled=false;}
   };
+}
+
+// Shrinks a phone photo so it uploads fast but stays readable.
+function shrink(file){
+  return new Promise((ok,bad)=>{
+    const img=new Image(),url=URL.createObjectURL(file);
+    img.onload=()=>{const max=2000,k=Math.min(1,max/Math.max(img.width,img.height));const c=document.createElement('canvas');c.width=Math.round(img.width*k);c.height=Math.round(img.height*k);c.getContext('2d').drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(url);ok(c.toDataURL('image/jpeg',0.85));};
+    img.onerror=()=>{URL.revokeObjectURL(url);bad(new Error('That photo couldn\'t be opened.'));};
+    img.src=url;
+  });
 }
 
 // ---------- Products & prices ----------

@@ -206,7 +206,7 @@ exports.teamAccount = onRequest({ cors: true }, async (req, res) => {
 });
 
 // 10) Back Office: Square sales and menu for food cost (owners/managers).
-exports.backOffice = onRequest({ cors: true, timeoutSeconds: 120 }, async (req, res) => {
+exports.backOffice = onRequest({ cors: true, timeoutSeconds: 120, memory: "512MiB" }, async (req, res) => {
   if (req.method !== "POST") return res.status(405).json({ error: "POST only" });
   try {
     res.set("Cache-Control", "no-store");
