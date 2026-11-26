@@ -13,4 +13,4 @@ export const tipPercents = [0, 15, 18, 20];
 // Go back to the start screen after this many seconds with no taps.
 export const idleSeconds = 60;
 
-export const logoUrl = "logo-dark.png";
+export const logoUrl = "logo-ink.png";
