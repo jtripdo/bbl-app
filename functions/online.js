@@ -6,7 +6,7 @@ const kiosk = require("./kiosk");
 
 const ONLINE_LOCATIONS = ["LTRDX64JHBHYM", "LQZQVWG5RTABM"]; // Pasta Packs, Pop Ups
 const POP_UPS = "LQZQVWG5RTABM";
-const PREORDER_DAYS = 30;          // how far ahead pop-ups can be pre-ordered
+const PREORDER_DAYS = 365;         // pop-ups can be pre-ordered as soon as they are on the calendar
 const DEFAULT_POPUP_HOURS = 3;     // used when a pop-up has no end time
 const PREP_MIN = 15;      // earliest pickup = now + this
 const SLOT_MIN = 15;      // pickup times every 15 minutes
