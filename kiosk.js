@@ -69,12 +69,16 @@ $("setupStart").addEventListener("click", () => {
 });
 
 // Press and hold the start-screen logo for 3 seconds to get back to setup.
+// Uses touch events with iPhone's image menu turned off, so the hold isn't interrupted.
 let holdTimer;
-$("attractLogo").addEventListener("pointerdown", () => {
-  holdTimer = setTimeout(() => { loadLocations(); show("setup"); }, 3000);
-});
-["pointerup", "pointerleave", "pointercancel"].forEach((ev) =>
-  $("attractLogo").addEventListener(ev, () => clearTimeout(holdTimer)));
+const logoEl = $("attractLogo");
+logoEl.draggable = false;
+const holdStart = (e) => { clearTimeout(holdTimer); holdTimer = setTimeout(() => { loadLocations(); show("setup"); }, 3000); };
+const holdEnd = () => clearTimeout(holdTimer);
+logoEl.addEventListener("touchstart", holdStart, { passive: true });
+logoEl.addEventListener("mousedown", holdStart);
+["touchend", "touchcancel", "mouseup", "mouseleave"].forEach((ev) => logoEl.addEventListener(ev, holdEnd));
+logoEl.addEventListener("contextmenu", (e) => e.preventDefault());
 
 // ---------- start screen ----------
 async function goAttract() {
