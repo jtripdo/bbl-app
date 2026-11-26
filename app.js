@@ -12,6 +12,7 @@ import {showRecipes} from './recipes.js';
 import {showMpPar,showMpParHist} from './mppar.js';
 import {showMode} from './mode.js';
 import {showPopLoad,TEMPLATE} from './popload.js?v=20261125m';
+import {showBO,showInvoices,showInvoiceForm,showProducts,showRecipeCosts,showRecipeForm,showCount,showPL} from './backoffice.js';
 
 const cur={v:'who'};
 
@@ -20,11 +21,12 @@ function renderBar(){
 }
 
 // Page access by role (set by owners on the Team screen). Owners see everything.
-const PAGE_OF={parhist:'par',mpmenu:'mealprep',mprecipes:'mealprep',mppar:'mealprep',mpparhist:'mealprep',load:'events',popload:'events',poptemplate:'events'};
-export const canSee=p=>S.role==='owner'||((S.access&&S.access[p])||['manager','staff']).includes(S.role);
+const PAGE_OF={parhist:'par',mpmenu:'mealprep',mprecipes:'mealprep',mppar:'mealprep',mpparhist:'mealprep',load:'events',popload:'events',poptemplate:'events',bo:'backoffice',boinv:'backoffice',boinvnew:'backoffice',boprod:'backoffice',borec:'backoffice',borecedit:'backoffice',bocount:'backoffice',bopl:'backoffice'};
+const MANAGER_ONLY=['people','backoffice'];
+export const canSee=p=>S.role==='owner'||((S.access&&S.access[p])||(MANAGER_ONLY.includes(p)?['manager']:['manager','staff'])).includes(S.role);
 
 function showDash(){
-  const tiles=[['par','box','Par Sheets'],['opening','sun','Opening'],['closing','moon','Closing'],['cleaning','sparkles','Cleaning'],['prep','chef','Prep Sheet'],['mealprep','utensils','Meal Prep'],['chat','chat','Team Chat'],['needs','cart','Needs & Wants'],['events','calendar','Events'],['people','users','Team'],['mode','tablet','Device Mode']];
+  const tiles=[['par','box','Par Sheets'],['opening','sun','Opening'],['closing','moon','Closing'],['cleaning','sparkles','Cleaning'],['prep','chef','Prep Sheet'],['mealprep','utensils','Meal Prep'],['chat','chat','Team Chat'],['needs','cart','Needs & Wants'],['events','calendar','Events'],['people','users','Team'],['backoffice','chart','Back Office'],['mode','tablet','Device Mode']];
   setView(`<p class="center mut">${new Date().toLocaleDateString([], {weekday:'long',month:'long',day:'numeric'})}</p><div class="grid">${canSee('today')?`<button class="tile wide" data-go="today"><span>${ic('today',24)}</span>Today</button>`:''}${tiles.filter(t=>canSee(t[0])).map(t=>`<button class="tile" data-go="${t[0]}"><span>${ic(t[1],26)}</span>${t[2]}</button>`).join('')}</div>`);
 }
 
@@ -42,6 +44,7 @@ function go(v,arg,title){
     cleaning:()=>showList('cleaning','Cleaning List',{note:'This list resets every day.'}),
     prep:()=>showList('prep_'+today(),'Prep Sheet',{ph:'Add a prep task (e.g. 4 lb butter, cubed)',note:'This list is just for today. Tomorrow starts fresh.'}),
     chat:showChat,needs:showNeeds,events:showEvents,mode:showMode,
+    backoffice:showBO,bo:showBO,boinv:showInvoices,boinvnew:()=>showInvoiceForm(arg),boprod:showProducts,borec:showRecipeCosts,borecedit:()=>showRecipeForm(arg),bocount:showCount,bopl:showPL,
     load:()=>showList('load_'+arg,'Load Out: '+(title||'Event'),{key:'event',back:'events',ph:'Add something to load (e.g. 2 hotel pans)'}),
     popload:()=>showPopLoad(arg,title),
     poptemplate:()=>showList(TEMPLATE,'Pop-up Load Out Template',{key:'template',back:'events',ph:'Add an item every pop-up needs',note:'Every pop-up gets these items on its Load Out Sheet. Mark items "Not needed" on a single pop-up instead of removing them here.'})

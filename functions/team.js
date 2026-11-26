@@ -47,8 +47,9 @@ const isOwner = (who) => who && who.role === "owner";
 const ROLES = ["owner", "manager", "staff"];
 
 // Which roles can open each page of the team app. Owners always see everything.
-const PAGES = ["today", "par", "opening", "closing", "cleaning", "prep", "mealprep", "chat", "needs", "events", "people", "mode"];
-const DEFAULT_ACCESS = Object.fromEntries(PAGES.map((p) => [p, p === "people" ? ["manager"] : ["manager", "staff"]]));
+const PAGES = ["today", "par", "opening", "closing", "cleaning", "prep", "mealprep", "chat", "needs", "events", "people", "backoffice", "mode"];
+const MANAGER_ONLY = ["people", "backoffice"];
+const DEFAULT_ACCESS = Object.fromEntries(PAGES.map((p) => [p, MANAGER_ONLY.includes(p) ? ["manager"] : ["manager", "staff"]]));
 async function getAccess() {
   const snap = await db().collection("settings").doc("access").get();
   const saved = snap.exists ? snap.data().pages || {} : {};
@@ -236,4 +237,4 @@ async function handle(req) {
   }
 }
 
-module.exports = { handle, TeamError, cleanUsername, checkPassword, emailFor, EMAIL_DOMAIN };
+module.exports = { handle, TeamError, caller, getAccess, cleanUsername, checkPassword, emailFor, EMAIL_DOMAIN };
