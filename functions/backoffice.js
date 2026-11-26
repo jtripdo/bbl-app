@@ -101,11 +101,82 @@ async function menu() {
   return { items: out.filter((i) => i.name).sort((a, b) => a.name.localeCompare(b.name)) };
 }
 
+// Reads photos of a supplier invoice with Gemini (Vertex AI, billed to the Firebase project).
+const MODELS = (process.env.INVOICE_MODEL || "gemini-3.5-flash,gemini-2.5-flash").split(",");
+const SCHEMA = {
+  type: "OBJECT",
+  properties: {
+    vendor: { type: "STRING" },
+    date: { type: "STRING", description: "Invoice date as YYYY-MM-DD" },
+    invoiceNumber: { type: "STRING" },
+    invoiceTotal: { type: "NUMBER" },
+    lines: {
+      type: "ARRAY",
+      items: {
+        type: "OBJECT",
+        properties: {
+          name: { type: "STRING", description: "Short product name a cook would use" },
+          qty: { type: "NUMBER", description: "Total amount in the usage unit (e.g. 2 cases of 40 lb = 80)" },
+          unit: { type: "STRING", description: "Usage unit: lb, oz, each, qt, gal, dozen..." },
+          total: { type: "NUMBER", description: "Line total in dollars" },
+        },
+        required: ["name", "qty", "unit", "total"],
+      },
+    },
+  },
+  required: ["vendor", "lines"],
+};
+
+async function scan(images, known) {
+  if (!Array.isArray(images) || !images.length || images.length > 4) throw new BOError("Add 1 to 4 photos of the invoice.");
+  const parts = images.map((im) => {
+    const m = String(im || "").match(/^data:(image\/(?:jpeg|png|webp|heic));base64,(.+)$/);
+    if (!m) throw new BOError("That photo couldn't be read. Try again.");
+    return { inlineData: { mimeType: m[1], data: m[2] } };
+  });
+  const names = (Array.isArray(known) ? known : []).slice(0, 400).map((n) => String(n).slice(0, 80));
+  parts.push({ text:
+    "These photos are one supplier invoice for a restaurant. Read every product line. " +
+    "For each line give a short product name, the total amount bought in the unit the kitchen uses " +
+    "(convert cases/packs using the pack size printed, e.g. 2 cs of 4/10 lb = 80 lb; 1 case of 15 dozen eggs = 180 each), " +
+    "that unit, and the line total in dollars (after any discount, before tax). Skip tax, fuel, delivery and deposit lines. " +
+    (names.length ? "When a line is the same product as one of these existing names, use that exact name: " + names.join("; ") + ". " : "") +
+    "Date as YYYY-MM-DD. If something is unreadable, make your best guess." });
+  const { applicationDefault } = require("firebase-admin/app");
+  const token = (await applicationDefault().getAccessToken()).access_token;
+  const project = process.env.GCLOUD_PROJECT || process.env.GOOGLE_CLOUD_PROJECT || JSON.parse(process.env.FIREBASE_CONFIG || "{}").projectId;
+  let lastErr = "";
+  for (const model of MODELS) {
+    const url = `https://aiplatform.googleapis.com/v1/projects/${project}/locations/global/publishers/google/models/${model.trim()}:generateContent`;
+    const r = await fetch(url, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ role: "user", parts }],
+        generationConfig: { responseMimeType: "application/json", responseSchema: SCHEMA, temperature: 0 },
+      }),
+    });
+    const d = await r.json().catch(() => ({}));
+    if (r.status === 404) { lastErr = `model ${model} not found`; continue; }
+    if (r.status === 403) throw new BOError("Invoice scanning isn't turned on yet. Enable the Vertex AI API for the Firebase project.");
+    if (!r.ok) throw new Error(`Gemini ${r.status}: ${JSON.stringify(d).slice(0, 300)}`);
+    const text = (((d.candidates || [])[0] || {}).content || {}).parts?.map((p) => p.text || "").join("") || "";
+    let out;
+    try { out = JSON.parse(text); } catch (e) { throw new BOError("Couldn't read that invoice. Try a clearer, flatter photo."); }
+    out.lines = (out.lines || []).filter((l) => l && l.name && Number(l.total) >= 0)
+      .map((l) => ({ name: String(l.name).slice(0, 80), qty: Number(l.qty) || 0, unit: String(l.unit || "").slice(0, 12), total: Math.round(Number(l.total) * 100) / 100 }));
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(out.date || "")) out.date = "";
+    return out;
+  }
+  throw new Error("No invoice model available: " + lastErr);
+}
+
 async function handle(req) {
   await allowed(req);
   const b = req.body || {};
   if (b.action === "sales") return sales(String(b.from || ""), String(b.to || ""));
   if (b.action === "menu") return menu();
+  if (b.action === "scan") return scan(b.images, b.known);
   throw new BOError("Unknown action.");
 }
 
