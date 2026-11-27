@@ -300,4 +300,4 @@ async function status(orderId) {
   };
 }
 
-module.exports = { stores, checkout, status, availability, popupAvailability, ONLINE_LOCATIONS };
+module.exports = { stores, checkout, status, availability, popupAvailability, ONLINE_LOCATIONS, zoned, label, dayLabel };

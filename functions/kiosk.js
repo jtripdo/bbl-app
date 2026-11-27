@@ -108,6 +108,7 @@ function buildMenu(objects, locationId) {
       name: d.name || "Item",
       description: d.description_plaintext || d.description || "",
       categoryId: catId,
+      categoryNames: catIds.map((id) => ((byId.get(id) || {}).category_data || {}).name).filter(Boolean),
       image: (image && image.image_data && image.image_data.url) || "",
       variations,
       modifierLists,
@@ -131,7 +132,7 @@ async function getMenu(locationId) {
 }
 
 // Checks the cart against the real menu and turns it into Square line items.
-function buildLineItems(menu, cart) {
+function buildLineItems(menu, cart, maxQty = 20) {
   if (!Array.isArray(cart) || !cart.length || cart.length > 30) {
     throw new UserError("Your cart is empty.");
   }
@@ -141,7 +142,7 @@ function buildLineItems(menu, cart) {
     const variation = item.variations.find((v) => v.id === line.variationId);
     if (variation.soldOut) throw new UserError(`${item.name} is sold out.`);
     const qty = Math.floor(Number(line.qty));
-    if (!(qty >= 1 && qty <= 20)) throw new UserError("Please check your quantities.");
+    if (!(qty >= 1 && qty <= maxQty)) throw new UserError("Please check your quantities.");
 
     const chosen = Array.isArray(line.modifierIds) ? line.modifierIds : [];
     const modifiers = [];
