@@ -11,6 +11,7 @@ const { syncOrder } = require("./tickets");
 const kiosk = require("./kiosk");
 const online = require("./online");
 const backoffice = require("./backoffice");
+const catering = require("./catering");
 const team = require("./team");
 
 initializeApp();
@@ -48,10 +49,12 @@ exports.squareWebhook = onRequest({ minInstances: 1 }, async (req, res) => {
   }
   if (!orderId) return res.status(200).send("ignored");
   try {
-    await syncOrder(db, await sq.getOrder(orderId), {
+    const order = await sq.getOrder(orderId);
+    await syncOrder(db, order, {
       squareEventAt: req.body.created_at || "",
       webhookAt,
     });
+    await catering.syncEvent(db, order).catch((e) => logger.error("Catering event sync failed", { orderId, err: e.message }));
     res.status(200).send("ok");
   } catch (err) {
     logger.error("Webhook sync failed", { orderId, err: err.message });
@@ -215,5 +218,23 @@ exports.backOffice = onRequest({ cors: true, timeoutSeconds: 120, memory: "512Mi
     if (err instanceof backoffice.BOError) return res.status(400).json({ error: err.message });
     logger.error("Back office failed", { action: (req.body || {}).action, err: err.message });
     res.status(500).json({ error: "Couldn't load Square data. Please try again." });
+  }
+});
+
+// 11) Website catering orders: menu, quote, checkout, status.
+exports.cateringOrder = onRequest({ cors: true }, async (req, res) => {
+  const b = req.method === "GET" ? { action: req.query.action || "menu", orderId: req.query.order, date: req.query.date } : (req.body || {});
+  try {
+    if (b.action === "menu") return res.json(await catering.menu());
+    if (b.action === "slots") return res.json({ slots: catering.slotsFor(String(b.date || "")) });
+    if (b.action === "status") return res.json(await catering.status(b.orderId));
+    if (req.method !== "POST") return res.status(405).json({ error: "POST only" });
+    if (b.action === "quote") return res.json(await catering.quote(b));
+    if (b.action === "checkout") return res.json(await catering.checkout(b));
+    return res.status(400).json({ error: "Unknown action." });
+  } catch (err) {
+    if (err instanceof kiosk.UserError) return res.status(400).json({ error: err.message });
+    logger.error("Catering order failed", { action: b.action, err: err.message });
+    return res.status(500).json({ error: "Something went wrong. Please try again or call us." });
   }
 });

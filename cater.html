@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#F5EDDC">
+  <title>Order Catering | Buttermilk Biscuit Lab</title>
+  <meta name="description" content="Order Buttermilk Biscuit Lab catering online for pickup or delivery in Tampa.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Antonio:wght@400;600;700&family=Inter:wght@400;500;600;700&family=DM+Mono:wght@500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="order.css?v=20261125h">
+  <link rel="stylesheet" href="theme.css?v=20261125h">
+<meta name="bbl-version" content="dev">
+</head>
+<body>
+  <header class="site-head">
+    <div class="wrap head-row">
+      <a class="brand" href="./"><img class="brand-logo" src="logo-ink.png" alt="Buttermilk Biscuit Lab home">
+      </a>
+      <nav aria-label="Main" class="nav">
+        <a class="nl" href="about.html">About Us</a>
+        <a class="nl" href="order.html">Order Online</a>
+        <a class="nl" href="popups.html">Pop-Up Calendar</a>
+        <a class="nl on" href="catering.html" aria-current="page">Catering</a>
+      </nav>
+    </div>
+  </header>
+
+  <style>
+    .seg{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .seg button{padding:14px;border-radius:14px;border:1px solid var(--line,#e4dccb);background:#fff;font:inherit;font-weight:600;cursor:pointer}
+    .seg button.on{background:var(--ink,#1f1a14);color:#fff;border-color:var(--ink,#1f1a14)}
+    .qty-jump{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 0}
+    .qty-jump button{padding:10px 14px;border-radius:999px;border:1px solid var(--line,#e4dccb);background:#fff;font:inherit;font-weight:600;cursor:pointer}
+    .plan-sum{font-size:14px}
+  </style>
+
+  <!-- 1. Plan -->
+  <section id="plan" class="screen">
+    <div class="wrap hero">
+      <div class="eyebrow">Catering · Order online</div>
+      <h1>Feed the crew.<br><span class="hl">We bring it hot.</span></h1>
+      <p class="lede">Pick your date and headcount, build your spread, and pay online. Order at least 24 hours ahead.</p>
+    </div>
+    <div class="wrap narrow"><div class="stack">
+      <label>Pickup or delivery?</label>
+      <div class="seg" id="method"><button data-m="pickup" class="on">Pickup</button><button data-m="delivery">Delivery</button></div>
+      <p id="feeNote" class="muted small hide"></p>
+      <label for="people">How many people?</label>
+      <input id="people" type="number" inputmode="numeric" min="1" max="5000" placeholder="e.g. 25">
+      <label for="evDate">Date</label>
+      <input id="evDate" type="date">
+      <label for="evTime">Time you want it ready</label>
+      <select id="evTime"><option value="">Pick a date first</option></select>
+      <p id="planError" class="error" role="alert"></p>
+      <button id="toMenu" class="btn butter wide">Build your order</button>
+      <p class="muted small">Planning something big or custom? <a href="catering.html#inquire">Request a quote instead</a>.</p>
+    </div></div>
+  </section>
+
+  <!-- 2. Menu -->
+  <section id="menu" class="screen hide">
+    <div class="subbar">
+      <div class="wrap subbar-row">
+        <button id="backToPlan" class="back" aria-label="Change date or headcount">‹</button>
+        <div class="store-head">
+          <div class="store-name">Catering menu</div>
+          <div id="planSum" class="mono small"></div>
+        </div>
+      </div>
+    </div>
+    <main class="wrap"><div id="items" class="items"><p class="muted">Loading the catering menu…</p></div></main>
+    <footer id="cartBar" class="cartbar hide">
+      <div class="wrap"><button id="openCart" class="btn butter wide"></button></div>
+    </footer>
+  </section>
+
+  <div id="sheet" class="overlay hide">
+    <div class="sheet" id="sheetBody" role="dialog" aria-modal="true"></div>
+  </div>
+
+  <!-- 3. Cart -->
+  <section id="cart" class="screen hide">
+    <div class="wrap narrow">
+      <button id="backToMenu" class="link-back">‹ Back to menu</button>
+      <h2 class="page-title">Your catering order</h2>
+      <div id="cartLines" class="stack"></div>
+    </div>
+    <footer class="cartbar">
+      <div class="wrap narrow"><button id="toCheckout" class="btn butter wide">Checkout</button></div>
+    </footer>
+  </section>
+
+  <!-- 4. Checkout -->
+  <section id="checkout" class="screen hide">
+    <div class="wrap narrow">
+      <button id="backToCart" class="link-back">‹ Back to your order</button>
+      <h2 class="page-title">Your details</h2>
+      <div class="stack">
+        <div id="whenWhere" class="where"></div>
+        <div id="addrWrap" class="stack hide" style="gap:8px">
+          <label for="addr">Delivery address</label>
+          <input id="addr" maxlength="160" autocomplete="street-address" placeholder="Street, city, ZIP">
+        </div>
+        <label for="custName">Name</label>
+        <input id="custName" maxlength="30" autocomplete="name" placeholder="Your name">
+        <label for="custPhone">Phone</label>
+        <input id="custPhone" type="tel" maxlength="16" autocomplete="tel" placeholder="(813) 555-0123">
+        <label for="custEmail">Email</label>
+        <input id="custEmail" type="email" maxlength="80" autocomplete="email" placeholder="you@company.com">
+        <label for="company">Company or event (optional)</label>
+        <input id="company" maxlength="60" placeholder="e.g. Acme office lunch">
+        <label for="notes">Notes (optional)</label>
+        <textarea id="notes" maxlength="400" rows="3" placeholder="Gate code, setup, allergies…"></textarea>
+        <div id="totals" class="totals"></div>
+        <p class="muted small">Next you'll pay on Square's secure checkout: Apple Pay, Google Pay, Cash App or card.</p>
+        <p id="payError" class="error" role="alert"></p>
+      </div>
+    </div>
+    <footer class="cartbar">
+      <div class="wrap narrow"><button id="payBtn" class="btn butter wide">Continue to payment</button></div>
+    </footer>
+  </section>
+
+  <!-- 5. Thank you -->
+  <section id="done" class="screen hide">
+    <div class="wrap narrow done">
+      <div class="check" aria-hidden="true">✓</div>
+      <div class="eyebrow">Catering booked</div>
+      <h1 id="doneTitle">Thank you!</h1>
+      <p id="doneOrder" class="done-num"></p>
+      <p id="doneWhen" class="done-when"></p>
+      <p id="doneWhere" class="muted"></p>
+      <a href="catering.html" class="btn ink">Back to catering</a>
+    </div>
+  </section>
+
+  <footer class="site-foot">
+    <div class="wrap foot-row">
+      <div>
+        <img class="foot-logo" src="logo-dark.png" alt="Buttermilk Biscuit Lab">
+        <p class="foot-sub">Scratch-made biscuits. Tampa, FL.</p>
+      </div>
+      <div class="foot-links">
+        <div class="eyebrow">Explore</div>
+        <a href="./">Home</a>
+        <a href="about.html">About Us</a>
+        <a href="order.html">Order Online</a>
+        <a href="popups.html">Pop-Up Calendar</a>
+        <a href="catering.html">Catering</a>
+      </div>
+      <div class="foot-links">
+        <div class="eyebrow">Contact</div>
+        <a href="mailto:info@buttermilkbiscuitlab.com">info@buttermilkbiscuitlab.com</a>
+        <a href="tel:8139065681">813.906.5681</a>
+        <a href="https://instagram.com/welovebbl">Instagram @welovebbl</a>
+      </div>
+    </div>
+    <div class="wrap foot-copy">© 2026 Buttermilk Biscuit Lab</div>
+  </footer>
+
+  <script type="module" src="cater.js?v=1"></script>
+</body>
+</html>

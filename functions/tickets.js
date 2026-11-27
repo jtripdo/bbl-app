@@ -30,6 +30,13 @@ function qtyText(q) {
   return Number.isFinite(n) ? String(n) : String(q || "1");
 }
 
+const CATERING_READY_MIN = Number(process.env.CATERING_READY_MIN || 90);
+function dueFor(order, at) {
+  const cat = (order.source && order.source.name === "BBL Catering") || (order.metadata && order.metadata.catering === "1");
+  if (!cat || !at) return at;
+  return new Date(Date.parse(at) - CATERING_READY_MIN * 60000).toISOString();
+}
+
 function toTicket(order) {
   const f = (order.fulfillments || [])[0] || {};
   const d = f.pickup_details || f.delivery_details || f.shipment_details || {};
@@ -40,7 +47,8 @@ function toTicket(order) {
     source: (order.source && order.source.name) || "In person",
     customer: (d.recipient && d.recipient.display_name) || "",
     fulfillmentType: f.type || TYPE_FALLBACK,
-    dueAt: d.pickup_at || d.deliver_at || "",
+    // Catering shows up early so the kitchen has time to cook it
+    dueAt: dueFor(order, d.pickup_at || d.deliver_at || ""),
     note: d.note || "",
     createdAt: order.created_at || "",
     items: (order.line_items || []).map((li) => ({
