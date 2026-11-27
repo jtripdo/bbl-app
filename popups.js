@@ -32,7 +32,7 @@ async function load() {
     const snap = await getDocs(query(collection(db, "events"), where("popup", "==", true)));
     S.events = snap.docs.map((d) => d.data())
       .filter((e) => e.active !== false && /^\d{4}-\d{2}-\d{2}$/.test(e.date || ""))
-      .map((e) => ({ date: e.date, title: e.title || "Pop-up", place: e.location || "", time: e.time || "", endTime: e.endTime || "" }))
+      .map((e) => ({ date: e.date, title: e.title || "Pop-up", place: e.location || "", time: e.time || "", endTime: e.endTime || "", preorder: e.preorder !== false }))
       .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
   } catch (err) {
     S.events = [];
@@ -79,6 +79,8 @@ function drawSelected() {
   $("selLabel").textContent = S.sel === todayKey ? `Today · ${label}` : label;
   const evs = S.events.filter((e) => e.date === S.sel);
   const btn = $("dayOrder");
+  const walkUp = evs.length && !evs.some((e) => e.preorder);
+  btn.style.display = walkUp ? "none" : "";
   btn.href = evs.length ? `order.html?loc=popups&date=${S.sel}` : "order.html";
   btn.textContent = evs.length ? (S.sel === todayKey ? "Order from the pop-up" : "Pre-order for this pop-up") : "Order ahead";
   $("selBody").innerHTML = evs.length ? evs.map((e) => `
@@ -86,6 +88,7 @@ function drawSelected() {
       <div class="ev-name">${esc(e.title)}</div>
       ${e.place ? `<div class="ev-row">${PIN}<a href="${mapLink(e.place)}" target="_blank" rel="noopener">${esc(e.place)}</a></div>` : ""}
       <div class="ev-row">${CLOCK}<span>${esc(timeText(e))}</span></div>
+      ${e.preorder ? "" : `<div class="ev-row"><span>Walk-up only, no online orders for this one.</span></div>`}
     </div>`).join("") : `
     <div class="none-title">No pop-up this day.</div>
     <p>Pick a marked date, or order ahead online.</p>`;
