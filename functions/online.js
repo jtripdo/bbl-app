@@ -124,7 +124,7 @@ async function popupEvents() {
   evCache = {
     at: Date.now(),
     list: snap.docs.map((d) => d.data())
-      .filter((e) => e.active !== false && /^\d{4}-\d{2}-\d{2}$/.test(e.date || "") && /^\d{1,2}:\d{2}$/.test(e.time || "")),
+      .filter((e) => e.active !== false && e.preorder !== false && /^\d{4}-\d{2}-\d{2}$/.test(e.date || "") && /^\d{1,2}:\d{2}$/.test(e.time || "")),
   };
   return evCache.list;
 }
