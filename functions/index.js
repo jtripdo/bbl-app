@@ -221,7 +221,7 @@ exports.backOffice = onRequest({ cors: true, timeoutSeconds: 120, memory: "512Mi
     res.set("Cache-Control", "no-store");
     res.json(await backoffice.handle(req));
   } catch (err) {
-    if (err instanceof backoffice.BOError) return res.status(400).json({ error: err.message });
+    if (err instanceof backoffice.BOError || err instanceof mail.MailNotReady) return res.status(400).json({ error: err.message });
     logger.error("Back office failed", { action: (req.body || {}).action, err: err.message });
     res.status(500).json({ error: "Couldn't load Square data. Please try again." });
   }
@@ -329,4 +329,9 @@ exports.rewardsDaily = onSchedule({ schedule: "0 9 * * *", timeZone: "America/Ne
   await loyalty.popupsToday().catch((e) => logger.error("Day-of pop-up email failed", { err: e.message }));
   await loyalty.birthdays().catch((e) => logger.error("Birthday points failed", { err: e.message }));
   await loyalty.releaseCredits().catch((e) => logger.error("Catering credit release failed", { err: e.message }));
+});
+
+// 16) End-of-day email to the owner (10 PM).
+exports.dailyReport = onSchedule({ schedule: "0 22 * * *", timeZone: "America/New_York", timeoutSeconds: 120 }, async () => {
+  await require("./report").send().catch((e) => logger.error("Daily report failed", { err: e.message }));
 });

@@ -15,7 +15,7 @@ async function boApi(action,body={}){
 
 const ALERT_PCT=5; // flag price changes of 5% or more
 const money=n=>'$'+(Number(n)||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
-const money0=n=>'$'+Math.round(Number(n)||0).toLocaleString('en-US');
+const money0=n=>((Number(n)||0)<0?'−':'')+'$'+Math.abs(Math.round(Number(n)||0)).toLocaleString('en-US');
 const per=(n,u)=>money(n)+(u?'/'+esc(u):'');
 const num=v=>{const n=parseFloat(String(v).replace(/[$,]/g,''));return isFinite(n)?n:0;};
 const pct=(a,b)=>b?(a/b*100):0;
@@ -79,7 +79,18 @@ export function showBO(){
     <button class="tile" data-go="labels">Prep & Labels</button>
     <button class="tile wide" data-go="bopl">Food Cost & P&L</button>
   </div>
-  <div class="sec">Price alerts</div><div id="alerts"><p class="mut small">Loading…</p></div>`);
+  <div class="sec">Price alerts</div><div id="alerts"><p class="mut small">Loading…</p></div>
+  ${S.role==='owner'?`<details class="add" id="rep"><summary>✉️ End-of-day email (10 PM)</summary><div>
+    <p class="mut small">Sales vs last week, labor, purchases, prime cost, top sellers, waste, what's 86'd, new Rewards members, and tomorrow's events and catering.</p>
+    <input id="repTo" placeholder="Email addresses (comma separated)" maxlength="200">
+    <label class="ib" style="gap:8px;margin:6px 0"><input type="checkbox" id="repOn" style="width:auto"> Send it every night</label>
+    <button class="btn" id="repSave">Save</button> <button class="btn ghost" id="repTest">Send me a test now</button><p id="repMsg" class="small"></p></div></details>`:''}`);
+  if(S.role==='owner'){
+    const show=r=>{$('#repTo').value=(r.emails||[]).join(', ');$('#repOn').checked=!!r.enabled;if(!r.ready)$('#repMsg').innerHTML='<span class="warn">Email key (BREVO_API_KEY) isn\'t set up yet.</span>';};
+    boApi('reportGet').then(show).catch(()=>{});
+    $('#repSave').onclick=async()=>{try{show(await boApi('reportSet',{emails:$('#repTo').value,enabled:$('#repOn').checked}));$('#repMsg').innerHTML='<span class="good">Saved.</span>';}catch(e){$('#repMsg').innerHTML=`<span class="bad">${esc(e.message)}</span>`;}};
+    $('#repTest').onclick=async()=>{$('#repMsg').textContent='Sending…';try{const r=await boApi('reportTest');$('#repMsg').innerHTML=`<span class="good">Sent to ${r.sent} address${r.sent>1?'es':''}. Check your inbox.</span>`;}catch(e){$('#repMsg').innerHTML=`<span class="bad">${esc(e.message)}</span>`;}};
+  }
   const from=dstr(new Date(Date.now()-6*86400000)),to=today();
   let sales=null,purch=null;
   const k3=()=>{if(sales!=null&&purch!=null)$('#k3').innerHTML=sales?`<span class="${fcClass(pct(purch,sales))}">${pctTxt(pct(purch,sales))}</span>`:'—';};
@@ -363,18 +374,19 @@ export function showPL(){
     const my=++seq;const [,from,to]=R[key];
     $('#pl').innerHTML='<p class="mut">Loading sales from Square…</p>';
     try{
-          const [sales,invS,cntS]=await Promise.all([
+          const [sales,invS,cntS,lab]=await Promise.all([
         boApi('sales',{from,to}),
         getDocs(query(collection(db,'boInvoices'),where('date','>=',from))),
-        getDocs(query(collection(db,'boCounts'),orderBy('date','desc'),limit(60)))
+        getDocs(query(collection(db,'boCounts'),orderBy('date','desc'),limit(60))),
+        boApi('labor',{from,to}).catch(e=>({error:e.message,days:[],cents:0,hours:0}))
       ]);
       if(my!==seq)return;
       const invs=invS.docs.map(dd).filter(i=>i.date<=to);
       const counts=cntS.docs.map(dd);
-      render(from,to,sales,invs,counts);
+      render(from,to,sales,invs,counts,lab);
     }catch(e){if(my===seq)$('#pl').innerHTML=`<p class="bad">${esc(e.message)}</p>`;}
   };
-  const render=(from,to,sales,invs,counts)=>{
+  const render=(from,to,sales,invs,counts,lab)=>{
     const S$=sales.days.reduce((a,d)=>a+d.sales,0)/100,orders=sales.days.reduce((a,d)=>a+d.orders,0);
     const P$=invs.reduce((a,i)=>a+(Number(i.total)||0),0);
     // Theoretical cost: what sold × recipe cost
@@ -386,25 +398,31 @@ export function showPL(){
     const actual=open&&close?open.value+invs.filter(i=>i.date>open.date&&i.date<=close.date).reduce((a,i)=>a+(Number(i.total)||0),0)-close.value:null;
     const byDay={};sales.days.forEach(d=>byDay[d.date]={date:d.date,sales:d.sales/100,orders:d.orders,purch:0});
     invs.forEach(i=>{(byDay[i.date]=byDay[i.date]||{date:i.date,sales:0,orders:0,purch:0}).purch+=Number(i.total)||0;});
+    (lab.days||[]).forEach(l=>{const d=(byDay[l.date]=byDay[l.date]||{date:l.date,sales:0,orders:0,purch:0});d.labor=l.cents/100;d.hours=l.hours;});
+    const L$=(lab.cents||0)/100;
+    const foodCost=actual!=null?actual:(theo||P$);
+    const prime=foodCost+L$;
     const days=Object.values(byDay).sort((a,b)=>b.date.localeCompare(a.date));
     $('#pl').innerHTML=`
     <div class="bo-kpis">
       <div class="bo-kpi"><span class="mut small">Net sales</span><b>${money0(S$)}</b><span class="mut small">${orders} orders</span></div>
       <div class="bo-kpi"><span class="mut small">Purchases</span><b>${money0(P$)}</b><span class="mut small ${S$?fcClass(pct(P$,S$)):''}">${S$?pctTxt(pct(P$,S$))+' of sales':''}</span></div>
       <div class="bo-kpi"><span class="mut small">Ideal food cost</span><b class="${S$?fcClass(pct(theo,S$)):''}">${S$&&theo?pctTxt(pct(theo,S$)):'—'}</b><span class="mut small">${theo?money0(theo)+' from recipes':'cost your menu items'}</span></div>
+      <div class="bo-kpi"><span class="mut small">Labor</span><b class="${S$&&!lab.error?fcClass(pct(L$,S$)):''}">${lab.error?'—':money0(L$)}</b><span class="mut small">${lab.error?'Couldn\'t read Square time clock':`${lab.hours} hrs · ${S$?pctTxt(pct(L$,S$)):'—'} of sales`}</span></div>
+      <div class="bo-kpi"><span class="mut small">Prime cost (food + labor)</span><b class="${S$?(pct(prime,S$)>=65?'bad':pct(prime,S$)>=60?'warn':'good'):''}">${S$?pctTxt(pct(prime,S$)):'—'}</b><span class="mut small">${money0(prime)} · aim for under 60%</span></div>
       <div class="bo-kpi"><span class="mut small">Actual food cost</span><b class="${actual!=null&&S$?fcClass(pct(actual,S$)):''}">${actual!=null&&S$?pctTxt(pct(actual,S$)):'—'}</b><span class="mut small">${actual!=null?money0(actual)+' used':'needs counts before & during'}</span></div>
     </div>
     ${S$&&covered<S$*0.7&&recs.length?`<p class="mut small">Recipes cover ${pctTxt(pct(covered,S$))} of sales. Cost more menu items for a fuller ideal food cost.</p>`:''}
     ${sales.partial?'<p class="warn small">Very busy range: only part of the sales loaded. Pick a shorter range.</p>':''}
     <div class="sec">Daily P&L</div>
-    <div class="card"><table class="bo-t"><tr><th>Day</th><th class="r">Sales</th><th class="r">Purchases</th><th class="r">Gross</th></tr>
-      ${days.length?days.map(d=>`<tr><td>${esc(dlabel(d.date))}<div class="mut small">${d.orders} orders</div></td><td class="r">${money0(d.sales)}</td><td class="r">${d.purch?money0(d.purch):'—'}</td><td class="r">${money0(d.sales-d.purch)}</td></tr>`).join(''):'<tr><td colspan="4" class="mut">No sales or invoices in this range.</td></tr>'}
+    <div class="card"><table class="bo-t"><tr><th>Day</th><th class="r">Sales</th><th class="r">Purch.</th><th class="r">Labor</th><th class="r">Left</th></tr>
+      ${days.length?days.map(d=>`<tr><td>${esc(dlabel(d.date))}<div class="mut small">${d.orders} orders</div></td><td class="r">${money0(d.sales)}</td><td class="r">${d.purch?money0(d.purch):'—'}</td><td class="r">${d.labor?money0(d.labor):'—'}</td><td class="r">${money0(d.sales-d.purch-(d.labor||0))}</td></tr>`).join(''):'<tr><td colspan="5" class="mut">No sales or invoices in this range.</td></tr>'}
     </table></div>
     <div class="sec">What sold</div>
     <div class="card"><table class="bo-t"><tr><th>Item</th><th class="r">Sold</th><th class="r">Sales</th><th class="r">Food cost</th></tr>
       ${itemRows.length?itemRows.slice(0,40).map(it=>{const fc=it.each!=null&&it.sales?pct(it.each*it.qty,it.sales/100):null;return `<tr><td>${esc(it.name)}</td><td class="r">${Math.round(it.qty*100)/100}</td><td class="r">${money0(it.sales/100)}</td><td class="r ${fc!=null?fcClass(fc):'mut'}">${fc!=null?pctTxt(fc):'—'}</td></tr>`;}).join(''):'<tr><td colspan="4" class="mut">No items sold in this range.</td></tr>'}
     </table></div>
-    <p class="mut small">Ideal food cost = what sold × each item's recipe cost. Actual food cost = last count before the range + purchases − latest count in the range. Gross = sales − purchases (labor and other costs aren't included).</p>`;
+    <p class="mut small">Ideal food cost = what sold × each item's recipe cost. Actual food cost = last count before the range + purchases − latest count in the range. Labor comes from Square's time clock (hours × pay rate; no taxes, overtime or salaries). Prime cost uses actual food cost when you have counts, otherwise ideal or purchases. Left = sales − purchases − labor (rent and other costs not included).</p>`;
   };
   watchProducts(l=>{prods=l;});
   sub(onSnapshot(collection(db,'boRecipes'),s=>{recs=s.docs.map(dd).filter(live);}));

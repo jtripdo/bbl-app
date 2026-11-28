@@ -6,7 +6,7 @@ const BASE = process.env.SQUARE_ENV === "sandbox"
   ? "https://connect.squareupsandbox.com/v2"
   : "https://connect.squareup.com/v2";
 
-async function square(method, path, body) {
+async function square(method, path, body, version) {
   const token = process.env.SQUARE_ACCESS_TOKEN;
   if (!token) throw new Error("SQUARE_ACCESS_TOKEN is not set");
   const res = await fetch(BASE + path, {
@@ -14,6 +14,7 @@ async function square(method, path, body) {
     headers: {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
+      ...(version ? { "Square-Version": version } : {}),
     },
     body: body ? JSON.stringify(body) : undefined,
   });

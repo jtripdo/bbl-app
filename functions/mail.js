@@ -34,6 +34,7 @@ async function switches() {
 }
 function resetSwitches() { switchCache = { at: 0, v: null }; }
 async function allowed(kind) {
+  if (kind === "internal") return; // reports to the owner aren't customer emails
   const sw = await switches();
   if (!(kind === "code" ? sw.codes : sw.auto)) throw new MailOff(kind === "code" ? "Rewards codes aren't turned on yet. Ask our team and they can check your points or use your rewards at the counter." : "Emails are switched off.");
 }
