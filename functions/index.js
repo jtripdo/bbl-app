@@ -288,6 +288,8 @@ exports.loyaltyAdmin = onRequest({ cors: true }, async (req, res) => {
       case "member": return res.json(await loyalty.adminMember(b.phone));
       case "sale": return res.json(await loyalty.adminSale(b.phone, b.amount, who.name, !!b.popup));
       case "redeem": return res.json(await loyalty.adminRedeem(b.phone, who.name));
+      case "useCredit": return res.json(await loyalty.adminUseCredit(b.phone, b.amount, who.name));
+      case "addCredit": mgrOnly(); return res.json(await loyalty.adminAddCredit(b.phone, b.amount, b.reason, who.name));
       case "join": await loyalty.join({ ...b, source: "team" }); return res.json(await loyalty.adminMember(b.phone));
       case "adjust": mgrOnly(); return res.json(await loyalty.adminAdjust(b.phone, b.delta, b.reason, who.name));
       case "broadcast": mgrOnly(); return res.json(await loyalty.adminBroadcast(b.subject, b.message));
@@ -316,4 +318,5 @@ exports.popupAnnounce = onDocumentWritten("events/{id}", async (event) => {
 exports.rewardsDaily = onSchedule({ schedule: "0 9 * * *", timeZone: "America/New_York", timeoutSeconds: 300 }, async () => {
   await loyalty.popupsToday().catch((e) => logger.error("Day-of pop-up email failed", { err: e.message }));
   await loyalty.birthdays().catch((e) => logger.error("Birthday points failed", { err: e.message }));
+  await loyalty.releaseCredits().catch((e) => logger.error("Catering credit release failed", { err: e.message }));
 });

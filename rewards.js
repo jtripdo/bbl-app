@@ -62,12 +62,13 @@ function showAccount(a) {
   $("acct").innerHTML = `
     <p class="muted small">Hi ${esc(a.name || "there")} · ${esc(a.phone)}</p>
     <div class="rw-pts">${a.points}</div><div class="muted">points</div>
+    ${a.credit > 0 ? `<p style="margin:10px 0 0"><b style="font-size:22px">$${(a.credit / 100).toFixed(2)}</b> BBL credit <span class="muted small">· ${a.creditExpires ? "next expires " + new Date(a.creditExpires).toLocaleDateString() : ""}</span></p>` : ""}
     <div class="rw-bar"><i style="width:${ready ? 100 : pct}%"></i></div>
     <p>${ready ? `<b class="rw-ok">You have ${ready} ${a.rewardName}${ready > 1 ? "s" : ""} ready!</b> Use it at the kiosk or when you order online.` : `${a.rewardPoints - a.points} more points to a ${esc(a.rewardName)}.`}</p>
     <p class="small muted">${a.visits} visits · ${a.lifetime} points earned all-time</p>
     <div class="rw-ref"><span class="small">Your friend code</span><span class="rw-code">${esc(a.refCode)}</span>
       <button class="btn paper" id="share">Share</button></div>
-    <table class="rw-hist">${(a.history || []).map((h) => `<tr><td>${esc(h.reason)}<div class="muted small">${h.at ? new Date(h.at).toLocaleDateString() : ""}</div></td><td>${h.delta > 0 ? "+" : ""}${h.delta}</td></tr>`).join("")}</table>`;
+    <table class="rw-hist">${(a.history || []).map((h) => `<tr><td>${esc(h.reason)}<div class="muted small">${h.at ? new Date(h.at).toLocaleDateString() : ""}</div></td><td>${h.credit ? `${h.credit > 0 ? "+" : "−"}$${(Math.abs(h.credit) / 100).toFixed(2)}` : `${h.delta > 0 ? "+" : ""}${h.delta}`}</td></tr>`).join("")}</table>`;
   $("acct").classList.remove("hide");
   $("share").addEventListener("click", async () => {
     const text = `Join BBL Rewards with my code ${a.refCode} and we both get 50 points: ${link}`;

@@ -75,16 +75,22 @@ async function showMember(phone){
       <div class="ly-big" style="margin-top:10px">${m.points}</div><div class="mut small">points</div>
       <div class="ly-bar"><i style="width:${Math.min(100,m.points/R*100)}%"></i></div>
       <div class="small">${m.points>=R?'<b class="good">Has a free biscuit sandwich ready</b>':`${R-m.points} to a free biscuit sandwich`}</div>
+      ${m.credit>0?`<div style="margin-top:8px"><b style="font-size:20px">${money(m.credit)}</b> catering credit <span class="mut small">· next expires ${new Date(m.creditExpires).toLocaleDateString()}</span></div>`:''}
       <div class="mut small" style="margin-top:6px">${m.visits} visits · ${money(m.spent)} spent · joined ${esc(ago(m.joinedAt))}${m.birthday?` · birthday ${esc(m.birthday.replace('-','/'))}`:''} · friend code ${esc(m.refCode)}</div></div>
     <div class="card"><b>Register sale</b><p class="mut small" style="margin:2px 0 8px">Rang them up on the Square register? Add the sale total so they earn points.</p>
       <div class="two"><input id="sa" inputmode="decimal" placeholder="$ total before tax"><label class="ib" style="gap:6px"><input type="checkbox" id="sp" style="width:auto"> At a pop-up (2×)</label></div>
       <button class="btn" id="sgo">Add points</button>
       ${m.points>=R?'<button class="btn ghost" id="rgo">Redeem free biscuit sandwich (−100)</button>':''}<p id="smsg" class="small"></p></div>
-    ${isMgr()?`<details class="add"><summary>Adjust points (managers)</summary><div><div class="two"><input id="ad" inputmode="numeric" placeholder="+20 or -20"><input id="ar" placeholder="Reason" maxlength="80"></div><button class="btn" id="ago">Save</button><p id="amsg" class="small"></p></div></details>`:''}
-    <div class="sec">History</div><div class="card"><table style="width:100%;border-collapse:collapse" class="ly-h">${d.history.map(h=>`<tr><td>${esc(h.reason)}<div class="mut small">${h.at?new Date(h.at).toLocaleString([], {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):''}${h.by?' · '+esc(h.by):''}</div></td><td class="${h.delta<0?'bad':'good'}">${h.delta>0?'+':''}${h.delta}</td></tr>`).join('')}</table></div>`;
+    ${m.credit>0?`<div class="card"><b>Use credit at the register</b><p class="mut small" style="margin:2px 0 8px">Take it off their Square ticket as a discount, then record it here. Not for catering.</p>
+      <input id="ca" inputmode="decimal" placeholder="$ amount (up to ${money(m.credit)})"><button class="btn" id="cgo">Use credit</button><p id="cmsg" class="small"></p></div>`:''}
+    ${isMgr()?`<details class="add"><summary>Adjust points or add credit (managers)</summary><div><div class="two"><input id="ad" inputmode="numeric" placeholder="Points: +20 or -20"><input id="ar" placeholder="Reason" maxlength="80"></div><button class="btn" id="ago">Save points</button>
+      <div class="two" style="margin-top:10px"><input id="cd" inputmode="decimal" placeholder="Credit $ to add"><input id="cr" placeholder="Reason" maxlength="80"></div><button class="btn" id="cadd">Add credit</button><p id="amsg" class="small"></p></div></details>`:''}
+    <div class="sec">History</div><div class="card"><table style="width:100%;border-collapse:collapse" class="ly-h">${d.history.map(h=>`<tr><td>${esc(h.reason)}<div class="mut small">${h.at?new Date(h.at).toLocaleString([], {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):''}${h.by?' · '+esc(h.by):''}</div></td><td class="${(h.credit||h.delta)<0?'bad':'good'}">${h.credit?`${h.credit>0?'+':'−'}${money(Math.abs(h.credit))}`:`${h.delta>0?'+':''}${h.delta}`}</td></tr>`).join('')}</table></div>`;
     const busy=(id,msg)=>{$('#'+id).innerHTML=msg;};
     $('#sgo').onclick=async()=>{busy('smsg','Saving…');try{draw(await api('sale',{phone:m.phone,amount:$('#sa').value.replace(/[^0-9.]/g,''),popup:$('#sp').checked}));}catch(e){busy('smsg',`<span class="bad">${esc(e.message)}</span>`);}};
     if($('#rgo'))$('#rgo').onclick=async()=>{if(!confirm('Give them a free biscuit sandwich and take 100 points?'))return;try{draw(await api('redeem',{phone:m.phone}));}catch(e){busy('smsg',`<span class="bad">${esc(e.message)}</span>`);}};
+    if($('#cgo'))$('#cgo').onclick=async()=>{try{draw(await api('useCredit',{phone:m.phone,amount:$('#ca').value.replace(/[^0-9.]/g,'')}));}catch(e){busy('cmsg',`<span class="bad">${esc(e.message)}</span>`);}};
+    if($('#cadd'))$('#cadd').onclick=async()=>{try{draw(await api('addCredit',{phone:m.phone,amount:$('#cd').value.replace(/[^0-9.]/g,''),reason:$('#cr').value}));}catch(e){busy('amsg',`<span class="bad">${esc(e.message)}</span>`);}};
     if($('#ago'))$('#ago').onclick=async()=>{try{draw(await api('adjust',{phone:m.phone,delta:$('#ad').value,reason:$('#ar').value}));}catch(e){busy('amsg',`<span class="bad">${esc(e.message)}</span>`);}};
   };
   try{draw(await api('member',{phone}));}catch(e){$('#lm').innerHTML=`<p class="bad">${esc(e.message)}</p>`;}

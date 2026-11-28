@@ -16,6 +16,13 @@ const BIRTHDAY_POINTS = Number(process.env.BIRTHDAY_POINTS || 100);
 const POP_UPS = "LQZQVWG5RTABM"; // double points here
 const REVIEW_URL = process.env.REVIEW_URL || "https://maps.app.goo.gl/GqngMTFsYsLZFCTK8";
 const TZ = "America/New_York";
+// Catering credits: 15% back (as $ credit) on catering orders of $150+ food subtotal.
+const CREDIT_MIN = 15000;          // cents
+const CREDIT_RATE = 0.15;
+const CREDIT_TIER_MIN = Number(process.env.CREDIT_TIER_MIN || 0);   // e.g. 50000 to turn on a higher rate over $500
+const CREDIT_TIER_RATE = Number(process.env.CREDIT_TIER_RATE || 0.20);
+const CREDIT_MONTHS = 12;
+const CATERING_RE = /cater/i;
 const FN = "https://us-central1-bbl-app-d58e6.cloudfunctions.net/rewards";
 
 class RewardsError extends Error {}
@@ -113,7 +120,8 @@ async function join({ phone, name, email, birthday, ref, alerts, source }) {
 async function peek(phone) {
   const m = await getMember(phone10(phone));
   if (!m) return { member: false, rewardPoints: REWARD_POINTS, joinBonus: JOIN_BONUS, rewardName: REWARD_NAME };
-  return { member: true, points: m.points, canRedeem: m.points >= REWARD_POINTS, rewardPoints: REWARD_POINTS, rewardName: REWARD_NAME, email: mask(m.email), name: m.name ? m.name.split(" ")[0] : "" };
+  const cr = await creditBalance(m.id);
+  return { member: true, points: m.points, credit: cr.cents, canRedeem: m.points >= REWARD_POINTS, rewardPoints: REWARD_POINTS, rewardName: REWARD_NAME, email: mask(m.email), name: m.name ? m.name.split(" ")[0] : "" };
 }
 
 // Email a 6-digit code to the member; the code proves it's them.
@@ -157,8 +165,106 @@ async function account(t) {
   const m = await getMember(p);
   const h = await db().collection("loyaltyLedger").where("phone", "==", p).get();
   const history = h.docs.map((d) => d.data()).sort((a, b) => (b.at?.toMillis?.() || 0) - (a.at?.toMillis?.() || 0)).slice(0, 25)
-    .map((x) => ({ delta: x.delta, reason: x.reason, at: x.at?.toMillis?.() || 0 }));
-  return { name: m.name, phone: pretty(p), email: m.email, points: m.points, lifetime: m.lifetime, visits: m.visits, refCode: m.refCode, birthday: m.birthday, rewardPoints: REWARD_POINTS, rewardName: REWARD_NAME, history };
+    .map((x) => ({ delta: x.delta, credit: x.credit || 0, reason: x.reason, at: x.at?.toMillis?.() || 0 }));
+  const cr = await creditBalance(p);
+  return { credit: cr.cents, creditExpires: cr.nextExpiry, name: m.name, phone: pretty(p), email: m.email, points: m.points, lifetime: m.lifetime, visits: m.visits, refCode: m.refCode, birthday: m.birthday, rewardPoints: REWARD_POINTS, rewardName: REWARD_NAME, history };
+}
+
+// ---------- catering credits ----------
+// Each earned amount is a "lot" (collection loyaltyCredits) with its own expiry;
+// spending uses the lots that expire first.
+async function creditLots(p, t) {
+  const q = db().collection("loyaltyCredits").where("phone", "==", p);
+  const s = t ? await t.get(q) : await q.get();
+  const now = Date.now();
+  return s.docs.map((d) => ({ ref: d.ref, id: d.id, ...d.data() }))
+    .filter((l) => l.status === "active" && l.remaining > 0 && l.expiresAt > now)
+    .sort((a, b) => a.expiresAt - b.expiresAt);
+}
+async function creditBalance(p) {
+  const lots = await creditLots(p);
+  return { cents: lots.reduce((a, l) => a + l.remaining, 0), nextExpiry: lots[0] ? lots[0].expiresAt : 0 };
+}
+const fmt$ = (c) => "$" + (c / 100).toFixed(2);
+
+// Paid catering order -> pending credit, released the day after the event.
+async function cateringCredit(order) {
+  const f = (order.fulfillments || [])[0] || {};
+  const d = f.pickup_details || {};
+  const p = phone10(d.recipient && d.recipient.phone_number) || phone10((order.metadata || {}).loyaltyPhone);
+  if (!p) return;
+  const cents = (x) => (x && x.amount) || 0;
+  // Food subtotal: what the items sold for, after discounts, before tax, tip and delivery.
+  const food = (order.line_items || []).filter((li) => li.name !== "Delivery fee")
+    .reduce((a, li) => a + (li.gross_sales_money ? cents(li.gross_sales_money) : cents(li.base_price_money) * (Number(li.quantity) || 1)) - cents(li.total_discount_money), 0);
+  if (food < CREDIT_MIN) return;
+  const rate = CREDIT_TIER_MIN && food >= CREDIT_TIER_MIN ? CREDIT_TIER_RATE : CREDIT_RATE;
+  const amount = Math.round(food * rate);
+  // Make sure they have a Rewards account (catering collects an email).
+  if (!(await getMember(p)) && d.recipient && emailOk(d.recipient.email_address)) {
+    await join({ phone: p, name: d.recipient.display_name, email: d.recipient.email_address, source: "catering" }).catch(() => {});
+  }
+  const ref = db().collection("loyaltyCredits").doc(`cat_${order.id}`);
+  const eventDay = d.pickup_at ? new Date(d.pickup_at).toLocaleDateString("en-CA", { timeZone: TZ }) : todayKey();
+  await db().runTransaction(async (t) => {
+    const cur = await t.get(ref);
+    if (cur.exists) return;
+    t.set(ref, { phone: p, amount, remaining: amount, status: "pending", releaseAfter: eventDay, orderId: order.id, food, rate, at: FieldValue.serverTimestamp() });
+  });
+}
+
+// Daily: release credits for events that have happened (unless the order was canceled/refunded),
+// and remind people about credit expiring within 30 days.
+async function releaseCredits() {
+  const today = todayKey();
+  const s = await db().collection("loyaltyCredits").where("status", "==", "pending").get();
+  let n = 0;
+  for (const d of s.docs) {
+    const c = d.data();
+    if (c.releaseAfter >= today) continue;
+    const o = (await square("GET", `/orders/${encodeURIComponent(c.orderId)}`).catch(() => ({}))).order || {};
+    const refunded = (o.refunds || []).length > 0 || (o.return_amounts && (o.return_amounts.total_money || {}).amount > 0);
+    if (o.state === "CANCELED" || refunded) { await d.ref.update({ status: "void", voidReason: o.state === "CANCELED" ? "canceled" : "refunded" }); continue; }
+    const expiresAt = Date.now() + CREDIT_MONTHS * 30.44 * 86400000;
+    await db().runTransaction(async (t) => {
+      t.update(d.ref, { status: "active", activeAt: Date.now(), expiresAt });
+      ledger(t, c.phone, 0, `Catering credit earned: ${fmt$(c.amount)} (${Math.round(c.rate * 100)}% back)`, { credit: c.amount, orderId: c.orderId });
+    });
+    n++;
+    const m = await getMember(c.phone);
+    if (m && m.email) {
+      await mail.send({ email: m.email, name: m.name }, `You earned ${fmt$(c.amount)} in BBL credit`,
+        mail.layout("thanks for catering with us", `<p>Hi ${mail.esc(m.name ? m.name.split(" ")[0] : "there")}, thanks for choosing BBL for your event. Here's <b>${fmt$(c.amount)} in BBL credit</b> (${Math.round(c.rate * 100)}% of your order) to treat yourself.</p>
+        <p>Use it at our kiosk, online orders, or any pop-up. Just use your phone number at checkout. It's good for 12 months, until ${new Date(expiresAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}.</p>
+        <p style="color:#7A7064;font-size:13px">Credit can't be used on catering orders, has no cash value, and doesn't cover tax or tip.</p>
+        ${mail.button(`${mail.SITE}/popups.html`, "Find a pop-up")}`)).catch(() => {});
+    }
+  }
+  // 30-day expiry reminders
+  const soon = Date.now() + 30 * 86400000;
+  const a = await db().collection("loyaltyCredits").where("status", "==", "active").get();
+  for (const d of a.docs) {
+    const c = d.data();
+    if (c.reminded || !(c.remaining > 0) || c.expiresAt > soon || c.expiresAt < Date.now()) continue;
+    const m = await getMember(c.phone);
+    if (m && m.email) await mail.send({ email: m.email, name: m.name }, `${fmt$(c.remaining)} of BBL credit expires soon`,
+      mail.layout("don't let it go to waste", `<p>You have <b>${fmt$(c.remaining)}</b> in BBL credit that expires on ${new Date(c.expiresAt).toLocaleDateString("en-US", { month: "long", day: "numeric" })}. Come see us!</p>${mail.button(`${mail.SITE}/order.html`, "Use my credit")}`)).catch(() => {});
+    await d.ref.update({ reminded: true });
+  }
+  return { released: n };
+}
+
+// Take `cents` of credit (oldest-expiring first) inside a transaction. Returns what was taken.
+async function spendCredit(t, p, cents, why, extra = {}) {
+  const lots = await creditLots(p, t);
+  let left = cents;
+  const plan = [];
+  for (const l of lots) { if (left <= 0) break; const take = Math.min(l.remaining, left); plan.push([l, take]); left -= take; }
+  const taken = cents - left;
+  return { taken, apply: () => {
+    for (const [l, take] of plan) t.update(l.ref, { remaining: l.remaining - take });
+    if (taken) ledger(t, p, 0, `${why}: ${fmt$(taken)} credit`, { credit: -taken, ...extra });
+  } };
 }
 
 // ---------- checkout: earn + redeem ----------
@@ -174,15 +280,45 @@ async function forCheckout(loyalty, menu, cart, dryRun) {
   const m = await getMember(p);
   if (!m) return {};
   const out = { metadata: { loyaltyPhone: p } };
-  if (loyalty.rewardToken) {
+  const wantsReward = loyalty.rewardToken && loyalty.useReward !== false;
+  const wantsCredit = loyalty.rewardToken && loyalty.useCredit;
+  if (wantsReward || wantsCredit) {
     if ((await tokenPhone(loyalty.rewardToken)) !== p) throw new RewardsError("Please verify your rewards code again.");
+  }
+  out.discounts = [];
+  let rewardCents = 0;
+  if (wantsReward) {
     if (m.points < REWARD_POINTS) throw new RewardsError(`You need ${REWARD_POINTS} points for a ${REWARD_NAME}.`);
-    const value = rewardValue(menu, cart);
-    if (!value) throw new RewardsError(`Add a biscuit sandwich to your order to use your reward.`);
-    out.discounts = [{ uid: "bbl-reward", name: `BBL Rewards: ${REWARD_NAME}`, amount_money: { amount: value, currency: "USD" }, scope: "ORDER" }];
+    rewardCents = rewardValue(menu, cart);
+    if (!rewardCents) throw new RewardsError(`Add a biscuit sandwich to your order to use your reward.`);
+    out.discounts.push({ uid: "bbl-reward", name: `BBL Rewards: ${REWARD_NAME}`, amount_money: { amount: rewardCents, currency: "USD" }, scope: "ORDER" });
     out.metadata.loyaltyRedeem = "1";
   }
+  if (wantsCredit) {
+    if (hasCatering(menu, cart)) throw new RewardsError("BBL credit can't be used on catering items.");
+    const bal = (await creditBalance(p)).cents;
+    const sub = cartSubtotal(menu, cart) - rewardCents;
+    const use = Math.min(bal, Math.max(0, sub));
+    if (use > 0) {
+      out.discounts.push({ uid: "bbl-credit", name: "BBL credit", amount_money: { amount: use, currency: "USD" }, scope: "ORDER" });
+      out.metadata.creditUse = String(use);
+    }
+  }
+  if (!out.discounts.length) delete out.discounts;
   return out;
+}
+function lineItem(menu, line) {
+  const item = menu.items.find((i) => i.variations.some((v) => v.id === line.variationId));
+  if (!item) return null;
+  const v = item.variations.find((x) => x.id === line.variationId);
+  const mods = item.modifierLists.flatMap((l) => l.modifiers).filter((x) => (line.modifierIds || []).includes(x.id));
+  return { item, unit: (v.price || 0) + mods.reduce((a, x) => a + (x.price || 0), 0) };
+}
+function cartSubtotal(menu, cart) {
+  return (cart || []).reduce((a, line) => { const li = lineItem(menu, line); return a + (li ? li.unit * (Math.floor(Number(line.qty)) || 1) : 0); }, 0);
+}
+function hasCatering(menu, cart) {
+  return (cart || []).some((line) => { const li = lineItem(menu, line); return li && [li.item.name, ...(li.item.categoryNames || [])].some((n) => CATERING_RE.test(n)); });
 }
 // Price of the most expensive eligible item in the cart (one item, base price + options).
 function rewardValue(menu, cart) {
@@ -205,6 +341,8 @@ async function onOrder(order) {
   const paid = order.state === "COMPLETED" || (order.tenders || []).length > 0;
   if (!paid || order.state === "CANCELED") return;
   const meta = order.metadata || {};
+  // Catering earns credit (15% back) instead of points.
+  if (meta.catering === "1" || (order.source && order.source.name === "BBL Catering")) return cateringCredit(order);
   let p = phone10(meta.loyaltyPhone);
   const f = (order.fulfillments || [])[0] || {};
   const d = f.pickup_details || f.delivery_details || {};
@@ -231,6 +369,7 @@ async function onOrder(order) {
     const m = ms.data();
     const rref = m.referredBy && !m.refPaid ? db().collection("loyalty").doc(m.referredBy) : null;
     const rs = rref ? await t.get(rref) : null;
+    const credit = Number(meta.creditUse) > 0 ? await spendCredit(t, p, Number(meta.creditUse), "Used", { orderId: order.id }) : null;
     // (all reads above, writes below)
     let delta = pts;
     let life = pts;
@@ -239,6 +378,7 @@ async function onOrder(order) {
       delta -= REWARD_POINTS;
       ledger(t, p, -REWARD_POINTS, `Redeemed: ${REWARD_NAME}`, { orderId: order.id }, `red_${order.id}`);
     }
+    if (credit) credit.apply();
     const upd = { visits: FieldValue.increment(1), spent: FieldValue.increment(base), lastVisit: FieldValue.serverTimestamp() };
     if (rref) {
       if (rs && rs.exists) {
@@ -342,7 +482,8 @@ async function adminMember(phone) {
   const m = await getMember(p);
   if (!m) throw new RewardsError("No member with that phone.");
   const h = await db().collection("loyaltyLedger").where("phone", "==", p).get();
-  return { member: summary(m), history: h.docs.map((d) => d.data()).sort((a, b) => (b.at?.toMillis?.() || 0) - (a.at?.toMillis?.() || 0)).slice(0, 50).map((x) => ({ delta: x.delta, reason: x.reason, by: x.by || "", at: x.at?.toMillis?.() || 0 })) };
+  const cr = await creditBalance(p);
+  return { member: { ...summary(m), credit: cr.cents, creditExpires: cr.nextExpiry }, history: h.docs.map((d) => d.data()).sort((a, b) => (b.at?.toMillis?.() || 0) - (a.at?.toMillis?.() || 0)).slice(0, 50).map((x) => ({ delta: x.delta, credit: x.credit || 0, reason: x.reason, by: x.by || "", at: x.at?.toMillis?.() || 0 })) };
 }
 async function adminAdjust(phone, delta, reason, by) {
   const p = phone10(phone);
@@ -385,6 +526,29 @@ async function adminRedeem(phone, by) {
   });
   return adminMember(p);
 }
+async function adminUseCredit(phone, dollars, by) {
+  const p = phone10(phone);
+  const cents = Math.round(Number(dollars) * 100);
+  if (!(cents > 0)) throw new RewardsError("Enter the amount of credit to use.");
+  await db().runTransaction(async (t) => {
+    const sp = await spendCredit(t, p, cents, "Used at the register", { by });
+    if (sp.taken < cents) throw new RewardsError(`They only have ${fmt$(sp.taken)} in credit.`);
+    sp.apply();
+  });
+  return adminMember(p);
+}
+async function adminAddCredit(phone, dollars, reason, by) {
+  const p = phone10(phone);
+  const cents = Math.round(Number(dollars) * 100);
+  if (!(cents > 0 && cents <= 100000)) throw new RewardsError("Enter a credit amount up to $1,000.");
+  if (!(await getMember(p))) throw new RewardsError("No member with that phone.");
+  const ref = db().collection("loyaltyCredits").doc();
+  await db().runTransaction(async (t) => {
+    t.set(ref, { phone: p, amount: cents, remaining: cents, status: "active", activeAt: Date.now(), expiresAt: Date.now() + CREDIT_MONTHS * 30.44 * 86400000, by, reason: clean(reason, 80) });
+    ledger(t, p, 0, `${clean(reason, 80) || "Credit added by team"}: ${fmt$(cents)} credit`, { credit: cents, by });
+  });
+  return adminMember(p);
+}
 async function adminStats() {
   const [m, s] = await Promise.all([db().collection("loyalty").count().get(), db().collection("subscribers").where("active", "==", true).count().get()]);
   return { members: m.data().count, subscribers: s.data().count, rewardPoints: REWARD_POINTS, rewardName: REWARD_NAME };
@@ -402,7 +566,7 @@ function withBirthMonth(data) { return data.birthday ? { ...data, birthMonth: da
 
 module.exports = {
   RewardsError, phone10, join, peek, sendCode, verifyCode, account, subscribe, unsubscribe,
-  forCheckout, rewardValue, onOrder, orderReady, announcePopup, popupsToday, birthdays,
+  forCheckout, rewardValue, onOrder, releaseCredits, creditBalance, adminUseCredit, adminAddCredit, orderReady, announcePopup, popupsToday, birthdays,
   adminSearch, adminMember, adminAdjust, adminSale, adminRedeem, adminStats, adminBroadcast, withBirthMonth,
   REWARD_POINTS, REWARD_NAME, JOIN_BONUS,
 };

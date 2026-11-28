@@ -230,7 +230,7 @@ $("payBtn").addEventListener("click", async () => {
   }
 });
 
-const rewards = mountRewards($("rewardsBox"), { phoneInput: $("custPhone"), nameInput: $("custName"), allowRedeem: false });
+const rewards = mountRewards($("rewardsBox"), { phoneInput: $("custPhone"), nameInput: $("custName"), allowRedeem: false, catering: true });
 // Catering already asks for email, so joining uses it.
 $("custEmail").addEventListener("input", () => { const e = $("rewardsBox").querySelector("[data-email]"); if (e && !e.value) { e.value = $("custEmail").value; e.dispatchEvent(new Event("input", { bubbles: true })); } });
 
