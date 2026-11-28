@@ -25,6 +25,7 @@
         <a class="nl" href="order.html">Order Online</a>
         <a class="nl on" href="popups.html" aria-current="page">Pop-Up Calendar</a>
         <a class="nl" href="catering.html">Catering</a>
+        <a class="nl" href="rewards.html">Rewards</a>
       </nav>
     </div>
   </header>
@@ -80,6 +81,19 @@
         <a class="btn paper" href="https://instagram.com/welovebbl">Follow @welovebbl</a>
       </div>
     </section>
+    <section class="wrap c-section" id="alerts">
+      <div class="small-crowd" style="flex-wrap:wrap;gap:14px">
+        <div style="flex:1;min-width:240px">
+          <div class="sc-title">Never miss a pop-up.</div>
+          <p class="muted small" style="margin:4px 0 0">Get an email when we add a pop-up and on the morning we're out. Members of <a href="rewards.html">BBL Rewards</a> earn double points at pop-ups.</p>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;min-width:260px;flex:1">
+          <input id="alertEmail" type="email" maxlength="80" placeholder="you@email.com" autocomplete="email" style="flex:1;min-width:180px">
+          <button id="alertBtn" class="btn butter">Get alerts</button>
+          <p id="alertMsg" class="small" role="status" style="width:100%;margin:0"></p>
+        </div>
+      </div>
+    </section>
   </main>
 
   <footer class="site-foot">
@@ -95,6 +109,7 @@
         <a href="order.html">Order Online</a>
         <a href="popups.html">Pop-Up Calendar</a>
         <a href="catering.html">Catering</a>
+        <a href="rewards.html">Rewards</a>
       </div>
       <div class="foot-links">
         <div class="eyebrow">Contact</div>
@@ -108,5 +123,18 @@
   </footer>
 
   <script type="module" src="popups.js?v=20261125h"></script>
+  <script type="module">
+    import { functionsBase } from "./kiosk-config.js";
+    const btn = document.getElementById("alertBtn"), msg = document.getElementById("alertMsg");
+    btn.addEventListener("click", async () => {
+      btn.disabled = true; msg.textContent = "Signing you up…";
+      try {
+        const r = await fetch(`${functionsBase}/rewards`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "subscribe", email: document.getElementById("alertEmail").value.trim() }) });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(d.error || "Please try again.");
+        msg.textContent = "You're on the list. See you at the next pop-up!"; btn.textContent = "Signed up";
+      } catch (e) { msg.textContent = e.message; btn.disabled = false; }
+    });
+  </script>
 </body>
 </html>

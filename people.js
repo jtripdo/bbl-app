@@ -58,7 +58,7 @@ export async function showPeople(){
     }catch(e){alert(e.message);}
     $('#pa').disabled=false;
   };
-  const LABEL={today:'Today',par:'Par Sheets',opening:'Opening',closing:'Closing',cleaning:'Cleaning',prep:'Prep Sheet',mealprep:'Meal Prep',chat:'Team Chat',needs:'Needs & Wants',events:'Events',labels:'Prep & Labels',people:'Team',backoffice:'Back Office',mode:'Device Mode'};
+  const LABEL={today:'Today',par:'Par Sheets',opening:'Opening',closing:'Closing',cleaning:'Cleaning',prep:'Prep Sheet',mealprep:'Meal Prep',chat:'Team Chat',needs:'Needs & Wants',events:'Events',labels:'Prep & Labels',loyalty:'Rewards',people:'Team',backoffice:'Back Office',mode:'Device Mode'};
   const drawAccess=acc=>{
     $('#pacc').innerHTML=`<div class="card"><div class="row" style="font-weight:700"><div class="txt">Page</div><div style="width:80px;text-align:center">Manager</div><div style="width:80px;text-align:center">Team</div></div>
       ${Object.keys(LABEL).map(pg=>`<div class="row"><div class="txt">${LABEL[pg]}</div>

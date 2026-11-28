@@ -12,6 +12,8 @@ const kiosk = require("./kiosk");
 const online = require("./online");
 const backoffice = require("./backoffice");
 const catering = require("./catering");
+const loyalty = require("./loyalty");
+const { onDocumentWritten } = require("firebase-functions/v2/firestore");
 const team = require("./team");
 
 initializeApp();
@@ -55,6 +57,7 @@ exports.squareWebhook = onRequest({ minInstances: 1 }, async (req, res) => {
       webhookAt,
     });
     await catering.syncEvent(db, order).catch((e) => logger.error("Catering event sync failed", { orderId, err: e.message }));
+    await loyalty.onOrder(order).catch((e) => logger.error("Rewards points failed", { orderId, err: e.message }));
     res.status(200).send("ok");
   } catch (err) {
     logger.error("Webhook sync failed", { orderId, err: err.message });
@@ -82,6 +85,8 @@ exports.kdsAction = onRequest({ cors: true }, async (req, res) => {
       squareUpdated = false;
       logger.warn("Could not complete order in Square", { orderId, err: err.message });
     }
+    // Rewards members get an "order ready" email with a review link.
+    await sq.getOrder(orderId).then((o) => loyalty.orderReady(o)).catch((e) => logger.warn("Ready email skipped", { orderId, err: e.message }));
     return res.json({ ok: true, squareUpdated });
   }
   if (action === "recall") {
@@ -141,7 +146,7 @@ exports.kioskCheckout = onRequest({ cors: true }, async (req, res) => {
   const b = req.body || {};
   try {
     if (!(await checkLocation(b.locationId))) throw new kiosk.UserError("This kiosk isn't set up yet.");
-    if (b.action === "quote") return res.json(await kiosk.quote(b.locationId, b.cart));
+    if (b.action === "quote") return res.json(await kiosk.quote(b.locationId, b.cart, b.rewards));
     if (b.action === "pay") {
       const result = await kiosk.checkout({
         locationId: b.locationId,
@@ -150,12 +155,13 @@ exports.kioskCheckout = onRequest({ cors: true }, async (req, res) => {
         sourceId: b.sourceId,
         tip: b.tip,
         key: b.key,
+        rewards: b.rewards,
       });
       return res.json({ ok: true, ...result });
     }
     if (b.action === "link") {
       return res.json(await kiosk.paymentLink({
-        locationId: b.locationId, name: b.name, cart: b.cart, key: b.key,
+        locationId: b.locationId, name: b.name, cart: b.cart, key: b.key, rewards: b.rewards,
       }));
     }
     if (b.action === "status") return res.json(await kiosk.linkStatus(b.orderId));
@@ -165,7 +171,7 @@ exports.kioskCheckout = onRequest({ cors: true }, async (req, res) => {
     }
     return res.status(400).json({ error: "Unknown action" });
   } catch (err) {
-    if (err instanceof kiosk.UserError) return res.status(400).json({ error: err.message });
+    if ((err instanceof kiosk.UserError || err instanceof loyalty.RewardsError)) return res.status(400).json({ error: err.message });
     logger.error("Kiosk checkout failed", { action: b.action, err: err.message });
     return res.status(500).json({ error: "Something went wrong. Please ask a team member for help." });
   }
@@ -190,7 +196,7 @@ exports.onlineCheckout = onRequest({ cors: true }, async (req, res) => {
     if (req.method !== "POST") return res.status(405).json({ error: "POST only" });
     return res.json(await online.checkout(b));
   } catch (err) {
-    if (err instanceof kiosk.UserError) return res.status(400).json({ error: err.message });
+    if ((err instanceof kiosk.UserError || err instanceof loyalty.RewardsError)) return res.status(400).json({ error: err.message });
     logger.error("Online checkout failed", { err: err.message });
     return res.status(500).json({ error: "Something went wrong. Please try again or call us." });
   }
@@ -233,8 +239,84 @@ exports.cateringOrder = onRequest({ cors: true }, async (req, res) => {
     if (b.action === "checkout") return res.json(await catering.checkout(b));
     return res.status(400).json({ error: "Unknown action." });
   } catch (err) {
-    if (err instanceof kiosk.UserError) return res.status(400).json({ error: err.message });
+    if ((err instanceof kiosk.UserError || err instanceof loyalty.RewardsError)) return res.status(400).json({ error: err.message });
     logger.error("Catering order failed", { action: b.action, err: err.message });
     return res.status(500).json({ error: "Something went wrong. Please try again or call us." });
   }
+});
+
+// 12) BBL Rewards + pop-up alerts (public website endpoints).
+exports.rewards = onRequest({ cors: true }, async (req, res) => {
+  const b = req.method === "GET" ? req.query : (req.body || {});
+  try {
+    if (b.action === "unsub") {
+      const ok = await loyalty.unsubscribe(b.id, b.t);
+      res.set("Content-Type", "text/html");
+      return res.send(`<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><body style="font-family:-apple-system,Helvetica,Arial;padding:40px;text-align:center;background:#FBF8F2;color:#1F1A14"><h2>${ok ? "You're unsubscribed." : "That link didn't work."}</h2><p>${ok ? "You won't get pop-up emails from us anymore." : "Email info@buttermilkbiscuitlab.com and we'll take you off the list."}</p><p><a href="https://buttermilkbiscuitlab.com">buttermilkbiscuitlab.com</a></p></body>`);
+    }
+    if (req.method !== "POST") return res.status(405).json({ error: "POST only" });
+    switch (b.action) {
+      case "peek": return res.json(await loyalty.peek(b.phone));
+      case "join": return res.json(await loyalty.join({ ...b, source: "website" }));
+      case "sendCode": return res.json(await loyalty.sendCode(b.phone));
+      case "verify": return res.json(await loyalty.verifyCode(b.phone, b.code));
+      case "account": return res.json(await loyalty.account(b.token));
+      case "subscribe": return res.json(await loyalty.subscribe(b.email, b.name, "popups"));
+      default: return res.status(400).json({ error: "Unknown action." });
+    }
+  } catch (err) {
+    if (err instanceof loyalty.RewardsError) return res.status(400).json({ error: err.message });
+    logger.error("Rewards failed", { action: b.action, err: err.message });
+    return res.status(500).json({ error: "Something went wrong. Please try again." });
+  }
+});
+
+// 13) Team app: rewards lookups and adjustments.
+exports.loyaltyAdmin = onRequest({ cors: true }, async (req, res) => {
+  if (req.method !== "POST") return res.status(405).json({ error: "POST only" });
+  const b = req.body || {};
+  try {
+    const who = await team.caller(req);
+    if (!who) throw new loyalty.RewardsError("Please sign in again.");
+    const access = await team.getAccess();
+    const isMgr = who.role === "owner" || who.role === "manager";
+    if (who.role !== "owner" && !(access.loyalty || []).includes(who.role)) throw new loyalty.RewardsError("You don't have access to Rewards.");
+    const mgrOnly = () => { if (!isMgr) throw new loyalty.RewardsError("Only managers can do that."); };
+    switch (b.action) {
+      case "stats": return res.json(await loyalty.adminStats());
+      case "search": return res.json({ members: await loyalty.adminSearch(b.q) });
+      case "member": return res.json(await loyalty.adminMember(b.phone));
+      case "sale": return res.json(await loyalty.adminSale(b.phone, b.amount, who.name, !!b.popup));
+      case "redeem": return res.json(await loyalty.adminRedeem(b.phone, who.name));
+      case "useCredit": return res.json(await loyalty.adminUseCredit(b.phone, b.amount, who.name));
+      case "addCredit": mgrOnly(); return res.json(await loyalty.adminAddCredit(b.phone, b.amount, b.reason, who.name));
+      case "join": await loyalty.join({ ...b, source: "team" }); return res.json(await loyalty.adminMember(b.phone));
+      case "adjust": mgrOnly(); return res.json(await loyalty.adminAdjust(b.phone, b.delta, b.reason, who.name));
+      case "broadcast": mgrOnly(); return res.json(await loyalty.adminBroadcast(b.subject, b.message));
+      default: return res.status(400).json({ error: "Unknown action." });
+    }
+  } catch (err) {
+    if (err instanceof loyalty.RewardsError) return res.status(400).json({ error: err.message });
+    logger.error("Rewards admin failed", { action: b.action, err: err.message });
+    return res.status(500).json({ error: "Something went wrong. Please try again." });
+  }
+});
+
+// 14) New pop-up on the calendar -> email everyone on the alerts list (once).
+exports.popupAnnounce = onDocumentWritten("events/{id}", async (event) => {
+  const before = event.data && event.data.before && event.data.before.exists ? event.data.before.data() : null;
+  const after = event.data && event.data.after && event.data.after.exists ? event.data.after.data() : null;
+  if (!after || !after.popup || after.active === false || after.announced) return;
+  if (before && before.popup) return; // only when it first goes on the website
+  const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" });
+  if (!after.date || after.date < today) return;
+  await event.data.after.ref.update({ announced: true });
+  try { await loyalty.announcePopup(event.params.id, after); } catch (e) { logger.error("Pop-up announce failed", { err: e.message }); }
+});
+
+// 15) Every morning: "we're out today" emails and birthday points.
+exports.rewardsDaily = onSchedule({ schedule: "0 9 * * *", timeZone: "America/New_York", timeoutSeconds: 300 }, async () => {
+  await loyalty.popupsToday().catch((e) => logger.error("Day-of pop-up email failed", { err: e.message }));
+  await loyalty.birthdays().catch((e) => logger.error("Birthday points failed", { err: e.message }));
+  await loyalty.releaseCredits().catch((e) => logger.error("Catering credit release failed", { err: e.message }));
 });

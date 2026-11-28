@@ -1,5 +1,6 @@
 import * as cfg from "./kiosk-config.js";
 import * as ui from "./kiosk-ui.js";
+import { mountRewards } from "./rewards-ui.js";
 
 const $ = (id) => document.getElementById(id);
 const SCREENS = ["setup", "attract", "menu", "cart", "checkout", "qr", "done"];
@@ -100,6 +101,7 @@ $("startOrder").addEventListener("click", () => { drawMenu(); show("menu"); });
 
 function resetOrder() {
   if (S.link) cancelQr();
+  try { $("custPhone").value = ""; rewards.reset(); } catch (e) { /* not ready yet */ }
   S.cart = [];
   S.sheet = null;
   S.quote = null;
@@ -240,7 +242,7 @@ async function goCheckout() {
   $("tips").innerHTML = "";
   setPayButton(false);
   try {
-    S.quote = await api("kioskCheckout", { action: "quote", locationId: S.location.id, cart: cartPayload() });
+    S.quote = await api("kioskCheckout", { action: "quote", locationId: S.location.id, cart: cartPayload(), rewards: rewards.payload() });
     drawTotals();
     await mountCard();
     setPayButton(true);
@@ -248,6 +250,20 @@ async function goCheckout() {
     $("payError").textContent = e.message;
   }
 }
+
+// BBL Rewards: phone to earn, email code to redeem; re-price when it changes.
+let requoteSeq = 0;
+const rewards = mountRewards($("rewardsBox"), {
+  phoneInput: $("custPhone"), nameInput: $("custName"), allowRedeem: true,
+  onChange: async () => {
+    if (S.screen !== "checkout" || !S.cart.length) return;
+    const my = ++requoteSeq;
+    try {
+      const q = await api("kioskCheckout", { action: "quote", locationId: S.location.id, cart: cartPayload(), rewards: rewards.payload() });
+      if (my === requoteSeq) { S.quote = q; drawTotals(); $("payError").textContent = ""; }
+    } catch (e) { if (my === requoteSeq) $("payError").textContent = e.message; }
+  },
+});
 
 function tipCents() { return S.quote ? Math.round(S.quote.total * S.tipPct / 100) : 0; }
 
@@ -307,6 +323,7 @@ $("payBtn").addEventListener("click", async () => {
     $("custName").focus();
     return;
   }
+  if (rewards.problem()) { $("payError").textContent = rewards.problem(); return; }
   S.paying = true;
   setPayButton(false);
   $("payBtn").textContent = "Processing…";
@@ -324,6 +341,7 @@ $("payBtn").addEventListener("click", async () => {
       tip: tipCents(),
       sourceId: tok.token,
       key: newKey(),
+      rewards: rewards.payload(),
     });
     showDone(r);
   } catch (e) {
@@ -346,12 +364,13 @@ $("phonePayBtn").addEventListener("click", async () => {
     $("custName").focus();
     return;
   }
+  if (rewards.problem()) { $("payError").textContent = rewards.problem(); return; }
   S.paying = true;
   setPayButton(false);
   $("payError").textContent = "";
   try {
     const r = await api("kioskCheckout", {
-      action: "link", locationId: S.location.id, cart: cartPayload(), name, key: newKey(),
+      action: "link", locationId: S.location.id, cart: cartPayload(), name, key: newKey(), rewards: rewards.payload(),
     });
     S.link = { linkId: r.linkId, orderId: r.orderId, name: r.name };
     destroyCard();

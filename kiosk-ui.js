@@ -117,6 +117,7 @@ export function renderCart(el, lines) {
 export function renderTotals(el, q, tipCents) {
   el.innerHTML = `
     <div><span>Subtotal</span><span>${fmt(q.subtotal)}</span></div>
+    ${q.discount ? `<div><span>BBL Rewards</span><span>−${fmt(q.discount)}</span></div>` : ""}
     <div><span>Tax</span><span>${fmt(q.tax)}</span></div>
     ${tipCents ? `<div><span>Tip</span><span>${fmt(tipCents)}</span></div>` : ""}
     <div class="grand"><span>Total</span><span>${fmt(q.total + tipCents)}</span></div>`;
