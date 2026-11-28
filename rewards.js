@@ -42,10 +42,22 @@ $("sBtn").addEventListener("click", async () => {
       const r = await api({ action: "sendCode", phone: $("sPhone").value });
       codeSent = true;
       $("codeRow").classList.remove("hide");
-      $("sErr").innerHTML = `<span class="muted">Code sent to ${esc(r.email)}.</span>`;
+      $("sErr").innerHTML = `<span class="muted">We sent a code to your email (${esc(r.email)}). Check spam if you don't see it.</span>`;
       busy(b, false, "See my points");
       $("sCode").focus();
-    } catch (e) { $("sErr").textContent = e.message; busy(b, false, "Email me a code"); }
+    } catch (e) {
+      // Codes not turned on yet: show the basic balance instead.
+      try {
+        const p = await api({ action: "peek", phone: $("sPhone").value });
+        if (p.member) {
+          $("sErr").innerHTML = `<span class="rw-ok">${esc(p.name ? p.name + ", you" : "You")} have <b>${p.points} points</b>${p.credit > 0 ? ` and <b>$${(p.credit / 100).toFixed(2)}</b> in BBL credit` : ""}.</span> <span class="muted">${p.canRedeem ? "That's a free biscuit sandwich! " : ""}Ask our team to use rewards at the counter.</span>`;
+          busy(b, false, "Send my code");
+          return;
+        }
+        $("sErr").textContent = "We couldn't find BBL Rewards for that phone number. Join above!";
+      } catch (x) { $("sErr").textContent = e.message; }
+      busy(b, false, "Send my code");
+    }
     return;
   }
   busy(b, true, "Checking…");
