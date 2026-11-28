@@ -1,6 +1,7 @@
 import * as cfg from "./kiosk-config.js";
 import * as ui from "./kiosk-ui.js";
 import { mountRewards } from "./rewards-ui.js";
+import { renderSpecial } from "./special.js";
 
 const $ = (id) => document.getElementById(id);
 const SCREENS = ["setup", "attract", "menu", "cart", "checkout", "qr", "done"];
@@ -85,6 +86,7 @@ logoEl.addEventListener("contextmenu", (e) => e.preventDefault());
 async function goAttract() {
   resetOrder();
   show("attract");
+  renderSpecial($("kSpecial"), { noButton: true }).catch(() => {});
   $("attractMsg").textContent = "";
   try {
     S.menu = await api(`kioskMenu?loc=${encodeURIComponent(S.location.id)}`);

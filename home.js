@@ -1,8 +1,9 @@
 // Home page: live "Next pop-up" sticker and photos from the Square menu.
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getFirestore, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-lite.js";
 import { firebaseConfig } from "./kds-config.js";
 import { functionsBase } from "./kiosk-config.js";
+import { renderSpecial, renderInstagram } from "./special.js";
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => (
@@ -12,7 +13,7 @@ const PASTA_PACKS = "LTRDX64JHBHYM";
 
 async function nextPopup() {
   try {
-    const db = getFirestore(initializeApp(firebaseConfig));
+    const db = getFirestore(getApps()[0] || initializeApp(firebaseConfig));
     const snap = await getDocs(query(collection(db, "events"), where("popup", "==", true)));
     const n = new Date();
     const today = `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}-${String(n.getDate()).padStart(2, "0")}`;
@@ -47,3 +48,6 @@ async function photos() {
 
 nextPopup();
 photos();
+
+renderSpecial(document.getElementById("special"));
+renderInstagram(document.getElementById("insta"));
