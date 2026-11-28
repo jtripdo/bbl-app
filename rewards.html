@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#F5EDDC">
+  <title>BBL Rewards | Buttermilk Biscuit Lab</title>
+  <meta name="description" content="Join BBL Rewards: earn points on every biscuit, double at pop-ups, and get a free biscuit sandwich.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Antonio:wght@400;600;700&family=Inter:wght@400;500;600;700&family=DM+Mono:wght@500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="order.css?v=20261125h">
+  <link rel="stylesheet" href="theme.css?v=20261125h">
+<meta name="bbl-version" content="dev">
+</head>
+<body>
+  <header class="site-head">
+    <div class="wrap head-row">
+      <a class="brand" href="./"><img class="brand-logo" src="logo-ink.png" alt="Buttermilk Biscuit Lab home">
+      </a>
+      <nav aria-label="Main" class="nav">
+        <a class="nl" href="about.html">About Us</a>
+        <a class="nl" href="order.html">Order Online</a>
+        <a class="nl" href="popups.html">Pop-Up Calendar</a>
+        <a class="nl" href="catering.html">Catering</a>
+        <a class="nl on" href="rewards.html" aria-current="page">Rewards</a>
+      </nav>
+    </div>
+  </header>
+
+  <style>
+    .rw-grid{display:grid;gap:18px;grid-template-columns:1fr}
+    @media(min-width:860px){.rw-grid{grid-template-columns:1fr 1fr}}
+    .rw-card{background:#fff;border:1px solid var(--line,#e4dccb);border-radius:22px;padding:22px}
+    .rw-card h2{margin:0 0 6px;font-family:var(--display,"Antonio",sans-serif);text-transform:lowercase;font-size:32px}
+    .rw-steps{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));margin:6px 0 10px}
+    .rw-step{background:#fff;border:1px solid var(--line,#e4dccb);border-radius:18px;padding:16px}
+    .rw-step b{display:block;font-family:var(--display,"Antonio",sans-serif);font-size:30px;text-transform:lowercase}
+    .rw-bar{height:14px;border-radius:999px;background:#EFE8DA;overflow:hidden;margin:10px 0 4px}
+    .rw-bar i{display:block;height:100%;background:#F4B931;border-radius:999px}
+    .rw-pts{font-family:var(--display,"Antonio",sans-serif);font-size:64px;line-height:1;margin:6px 0 0}
+    .rw-hist{width:100%;border-collapse:collapse;font-size:14px;margin-top:10px}
+    .rw-hist td{padding:8px 0;border-top:1px solid var(--line,#e4dccb)}
+    .rw-hist td:last-child{text-align:right;font-weight:700;white-space:nowrap}
+    .rw-ref{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .rw-code{font-family:"DM Mono",monospace;font-size:22px;letter-spacing:.12em;background:#FFF8E6;border:1px dashed #F4B931;border-radius:12px;padding:8px 14px}
+    .rw-ok{color:#2f7d4f;font-weight:600}
+    .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  </style>
+
+  <main>
+    <section class="wrap hero">
+      <div class="eyebrow">BBL Rewards · Free to join</div>
+      <h1>Eat biscuits.<br><span class="hl">Earn biscuits.</span></h1>
+      <p class="lede">1 point for every $1, double at our pop-ups. 100 points gets you a free biscuit sandwich.</p>
+      <div class="rw-steps">
+        <div class="rw-step"><b>+25</b>points just for joining</div>
+        <div class="rw-step"><b>2×</b>points at every pop-up</div>
+        <div class="rw-step"><b>🎂</b>a free sandwich's worth of points in your birthday month</div>
+        <div class="rw-step"><b>+50</b>for you and a friend when they join with your code</div>
+      </div>
+    </section>
+
+    <section class="wrap rw-grid" style="padding-bottom:48px">
+      <div class="rw-card" id="joinCard">
+        <h2>join bbl rewards</h2>
+        <p class="muted small">Your phone number is your rewards ID. Use it when you order at the kiosk, online or for catering.</p>
+        <div class="stack">
+          <label for="jName">Name</label><input id="jName" maxlength="40" autocomplete="name">
+          <label for="jPhone">Phone</label><input id="jPhone" type="tel" maxlength="16" autocomplete="tel" placeholder="(813) 555-0123">
+          <label for="jEmail">Email</label><input id="jEmail" type="email" maxlength="80" autocomplete="email" placeholder="you@email.com">
+          <label>Birthday (optional, for your birthday treat)</label>
+          <div class="two"><select id="jMon"><option value="">Month</option></select><select id="jDay"><option value="">Day</option></select></div>
+          <label for="jRef">Friend's code (optional)</label><input id="jRef" maxlength="12" placeholder="ABC123" style="text-transform:uppercase">
+          <label style="display:flex;gap:10px;align-items:center;font-weight:500"><input type="checkbox" id="jAlerts" checked style="width:auto"> Email me when you add a pop-up</label>
+          <p id="jErr" class="error" role="alert"></p>
+          <button id="jBtn" class="btn butter wide">Join and get 25 points</button>
+        </div>
+      </div>
+
+      <div class="rw-card" id="acctCard">
+        <h2>check my points</h2>
+        <div id="signIn" class="stack">
+          <p class="muted small">We'll email you a 6-digit code.</p>
+          <label for="sPhone">Phone</label><input id="sPhone" type="tel" maxlength="16" autocomplete="tel" placeholder="(813) 555-0123">
+          <div id="codeRow" class="stack hide" style="gap:8px">
+            <label for="sCode">Code from your email</label><input id="sCode" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="123456">
+          </div>
+          <p id="sErr" class="error" role="alert"></p>
+          <button id="sBtn" class="btn ink wide">Email me a code</button>
+        </div>
+        <div id="acct" class="hide"></div>
+      </div>
+
+      <div class="rw-card" id="alertsCard">
+        <h2>pop-up alerts only</h2>
+        <p class="muted small">Not ready to join? Just get an email whenever we pop up somewhere new.</p>
+        <div class="stack">
+          <input id="aEmail" type="email" maxlength="80" placeholder="you@email.com" autocomplete="email">
+          <p id="aMsg" class="small" role="status"></p>
+          <button id="aBtn" class="btn paper wide">Get pop-up alerts</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-foot">
+    <div class="wrap foot-row">
+      <div>
+        <img class="foot-logo" src="logo-dark.png" alt="Buttermilk Biscuit Lab">
+        <p class="foot-sub">Scratch-made biscuits. Tampa, FL.</p>
+      </div>
+      <div class="foot-links">
+        <div class="eyebrow">Explore</div>
+        <a href="./">Home</a>
+        <a href="about.html">About Us</a>
+        <a href="order.html">Order Online</a>
+        <a href="popups.html">Pop-Up Calendar</a>
+        <a href="catering.html">Catering</a>
+        <a href="rewards.html">Rewards</a>
+      </div>
+      <div class="foot-links">
+        <div class="eyebrow">Contact</div>
+        <a href="mailto:info@buttermilkbiscuitlab.com">info@buttermilkbiscuitlab.com</a>
+        <a href="tel:8139065681">813.906.5681</a>
+        <a href="https://instagram.com/welovebbl">Instagram @welovebbl</a>
+      </div>
+    </div>
+    <div class="wrap foot-copy">© 2026 Buttermilk Biscuit Lab</div>
+  </footer>
+
+  <script type="module" src="rewards.js?v=1"></script>
+</body>
+</html>

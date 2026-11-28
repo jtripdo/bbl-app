@@ -1,5 +1,6 @@
 import { functionsBase } from "./kiosk-config.js";
 import * as ui from "./kiosk-ui.js";
+import { mountRewards } from "./rewards-ui.js";
 
 const $ = (id) => document.getElementById(id);
 const SCREENS = ["stores", "menu", "cart", "checkout", "done"];
@@ -229,7 +230,7 @@ async function goCheckout() {
   try {
     const [stores, quote] = await Promise.all([
       api("onlineStores"),
-      api("kioskCheckout", { action: "quote", locationId: S.store.id, cart: cartPayload() }),
+      api("kioskCheckout", { action: "quote", locationId: S.store.id, cart: cartPayload(), rewards: rewards.payload() }),
     ]);
     S.store = withPopupPlace(stores.stores.find((s) => s.id === S.store.id)) || S.store;
     S.quote = quote;
@@ -249,16 +250,34 @@ async function goCheckout() {
       for (const s of S.store.slots) opts.push(`<option value="${ui.esc(s.at)}">Today at ${ui.esc(s.label)}</option>`);
       $("pickupTime").innerHTML = opts.join("");
     }
-    $("totals").innerHTML = `
-      <div><span>Subtotal</span><span>${ui.fmt(quote.subtotal)}</span></div>
-      <div><span>Tax</span><span>${ui.fmt(quote.tax)}</span></div>
-      <div class="grand"><span>Total</span><span>${ui.fmt(quote.total)}</span></div>`;
+    drawTotals(quote);
     $("payBtn").disabled = false;
   } catch (e) {
     $("totals").innerHTML = "";
     $("payError").textContent = e.message;
   }
 }
+
+function drawTotals(q) {
+  $("totals").innerHTML = `
+    <div><span>Subtotal</span><span>${ui.fmt(q.subtotal)}</span></div>
+    ${q.discount ? `<div><span>BBL Rewards</span><span>−${ui.fmt(q.discount)}</span></div>` : ""}
+    <div><span>Tax</span><span>${ui.fmt(q.tax)}</span></div>
+    <div class="grand"><span>Total</span><span>${ui.fmt(q.total)}</span></div>`;
+}
+// Rewards: re-price when a reward is applied or removed.
+let requoteSeq = 0;
+const rewards = mountRewards($("rewardsBox"), {
+  phoneInput: $("custPhone"), nameInput: $("custName"), allowRedeem: true,
+  onChange: async () => {
+    if (!S.store || $("checkout").classList.contains("hide")) return;
+    const my = ++requoteSeq;
+    try {
+      const q = await api("kioskCheckout", { action: "quote", locationId: S.store.id, cart: cartPayload(), rewards: rewards.payload() });
+      if (my === requoteSeq) { S.quote = q; drawTotals(q); $("payError").textContent = ""; }
+    } catch (e) { if (my === requoteSeq) $("payError").textContent = e.message; }
+  },
+});
 
 function fillPopupTimes() {
   const pop = (S.store.popups || []).find((p) => p.id === chosenPopup);
@@ -274,6 +293,7 @@ $("payBtn").addEventListener("click", async () => {
   const phone = $("custPhone").value.trim();
   if (!name) { $("payError").textContent = "Please enter your name."; return $("custName").focus(); }
   if (phone.replace(/\D/g, "").length < 10) { $("payError").textContent = "Please enter your phone number."; return $("custPhone").focus(); }
+  if (rewards.problem()) { $("payError").textContent = rewards.problem(); return; }
   save("bbl-customer", { name, phone });
   $("payBtn").disabled = true;
   $("payBtn").textContent = "Opening secure checkout…";
@@ -283,6 +303,7 @@ $("payBtn").addEventListener("click", async () => {
       locationId: S.store.id, cart: cartPayload(), name, phone,
       pickupAt: $("pickupTime").value, key: newKey(),
       popupId: S.store.id === POP_UPS ? chosenPopup : undefined,
+      rewards: rewards.payload(),
     });
     const pop = (S.store.popups || []).find((p) => p.id === chosenPopup);
     save("bbl-last-order", { orderId: r.orderId, storeId: S.store.id, place: S.store.id === POP_UPS ? ((pop && pop.place) || S.store.address || "") : "" });

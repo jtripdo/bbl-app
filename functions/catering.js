@@ -4,6 +4,7 @@
 const { square, getLocations } = require("./square");
 const kiosk = require("./kiosk");
 const online = require("./online");
+const loyalty = require("./loyalty");
 
 const TZ = "America/New_York";
 const LEAD_HOURS = Number(process.env.CATERING_LEAD_HOURS || 24);
@@ -133,6 +134,8 @@ async function checkout(b) {
   const d = details(b);
   const { loc, menu: m } = await cateringMenu();
   const order = buildOrder(loc.id, d, kiosk.buildLineItems(m, b.cart, MAX_QTY));
+  const extra = await loyalty.forCheckout({ phone: d.phone, join: b.rewards && b.rewards.join, source: "catering" }, m, b.cart);
+  if (extra.metadata) order.metadata = { ...order.metadata, ...extra.metadata };
   const data = await square("POST", "/online-checkout/payment-links", {
     idempotency_key: `${b.key}-c`,
     order,

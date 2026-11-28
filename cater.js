@@ -1,6 +1,7 @@
 // Catering ordering (ezCater-style): plan → menu → cart → details → Square checkout.
 import { functionsBase } from "./kiosk-config.js";
 import * as ui from "./kiosk-ui.js";
+import { mountRewards } from "./rewards-ui.js";
 
 const $ = (id) => document.getElementById(id);
 const SCREENS = ["plan", "menu", "cart", "checkout", "done"];
@@ -218,6 +219,7 @@ $("payBtn").addEventListener("click", async () => {
       action: "checkout", cart: cartPayload(), method: S.method, people: S.people, date: S.date, at: S.at,
       name: v("custName"), phone: v("custPhone"), email: v("custEmail"), company: v("company"), notes: v("notes"),
       address: S.method === "delivery" ? v("addr") : "", key: newKey(),
+      rewards: (() => { const r = rewards.payload(); if (r && r.join && !r.join.email) r.join.email = v("custEmail"); return r; })(),
     });
     save("bbl-cater-last", { orderId: r.orderId, address: S.method === "delivery" ? v("addr") : "" });
     window.location.href = r.url;
@@ -227,6 +229,10 @@ $("payBtn").addEventListener("click", async () => {
     $("payBtn").textContent = "Continue to payment";
   }
 });
+
+const rewards = mountRewards($("rewardsBox"), { phoneInput: $("custPhone"), nameInput: $("custName"), allowRedeem: false });
+// Catering already asks for email, so joining uses it.
+$("custEmail").addEventListener("input", () => { const e = $("rewardsBox").querySelector("[data-email]"); if (e && !e.value) { e.value = $("custEmail").value; e.dispatchEvent(new Event("input", { bubbles: true })); } });
 
 // ---------- 5. after paying ----------
 async function showPaid() {

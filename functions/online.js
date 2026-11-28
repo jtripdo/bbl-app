@@ -3,6 +3,7 @@
 // Square's hosted checkout page (Apple Pay, Google Pay, Cash App, card).
 const { square } = require("./square");
 const kiosk = require("./kiosk");
+const loyalty = require("./loyalty");
 
 const ONLINE_LOCATIONS = ["LTRDX64JHBHYM", "LQZQVWG5RTABM"]; // Pasta Packs, Pop Ups
 const POP_UPS = "LQZQVWG5RTABM";
@@ -253,6 +254,9 @@ async function checkout(b) {
   const lineItems = kiosk.buildLineItems(menu, b.cart);
   const order = kiosk.orderDraft(loc.id, name, lineItems);
   order.source = { name: "BBL Online" };
+  const extra = await loyalty.forCheckout({ ...(b.rewards || {}), phone: digits, source: "online" }, menu, b.cart);
+  if (extra.metadata) order.metadata = extra.metadata;
+  if (extra.discounts) order.discounts = extra.discounts;
   order.fulfillments[0].pickup_details = {
     recipient: { display_name: name, phone_number: phone },
     ...pickup,

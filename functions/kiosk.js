@@ -1,6 +1,7 @@
 // Self-order kiosk: menu from your Square catalog, then order + card payment.
 // Prices always come from Square, never from the kiosk screen.
 const { square } = require("./square");
+const loyalty = require("./loyalty");
 
 const MENU_CACHE_MS = 5 * 60000;
 const cache = new Map(); // locationId -> { at, menu }
@@ -191,30 +192,41 @@ function orderDraft(locationId, name, lineItems) {
 }
 
 // Totals (with tax) without creating anything.
-async function quote(locationId, cart) {
+// Adds rewards (member phone, reward discount) to an order draft.
+function applyRewards(draft, extra) {
+  if (extra.metadata) draft.metadata = { ...(draft.metadata || {}), ...extra.metadata };
+  if (extra.discounts) draft.discounts = extra.discounts;
+  return draft;
+}
+
+async function quote(locationId, cart, rewards) {
   const menu = await getMenu(locationId);
   const draft = orderDraft(locationId, "Kiosk", buildLineItems(menu, cart));
   delete draft.fulfillments;
+  applyRewards(draft, await loyalty.forCheckout(rewards, menu, cart, true));
+  delete draft.metadata;
   const data = await square("POST", "/orders/calculate", { order: draft });
   const o = data.order;
   return {
-    subtotal: money(o.total_money) - (money(o.total_tax_money) || 0),
+    subtotal: money(o.total_money) - (money(o.total_tax_money) || 0) + (money(o.total_discount_money) || 0),
     tax: money(o.total_tax_money) || 0,
+    discount: money(o.total_discount_money) || 0,
     total: money(o.total_money),
   };
 }
 
 // Creates the order in Square and charges the card.
-async function checkout({ locationId, name, cart, sourceId, tip, key }) {
+async function checkout({ locationId, name, cart, sourceId, tip, key, rewards }) {
   if (typeof sourceId !== "string" || !sourceId) throw new UserError("Card details are missing.");
   if (typeof key !== "string" || !/^[A-Za-z0-9-]{8,40}$/.test(key)) throw new UserError("Please try again.");
   const menu = await getMenu(locationId);
   const lineItems = buildLineItems(menu, cart);
   const who = cleanName(name);
 
+  const extra = await loyalty.forCheckout(rewards && { ...rewards, source: "kiosk" }, menu, cart);
   const created = await square("POST", "/orders", {
     idempotency_key: `${key}-o`,
-    order: orderDraft(locationId, who, lineItems),
+    order: applyRewards(orderDraft(locationId, who, lineItems), extra),
   });
   const order = created.order;
   const total = money(order.total_money);
@@ -248,7 +260,7 @@ async function checkout({ locationId, name, cart, sourceId, tip, key }) {
 
 // Pay on your phone: a Square-hosted checkout page (Apple Pay, Google Pay,
 // Cash App, card) for the same order. The kiosk shows it as a QR code.
-async function paymentLink({ locationId, name, cart, key }) {
+async function paymentLink({ locationId, name, cart, key, rewards }) {
   if (typeof key !== "string" || !/^[A-Za-z0-9-]{8,40}$/.test(key)) throw new UserError("Please try again.");
   const menu = await getMenu(locationId);
   const lineItems = buildLineItems(menu, cart);
@@ -263,13 +275,14 @@ async function paymentLink({ locationId, name, cart, key }) {
     checkout_options: options,
     payment_note: `BBL Kiosk - ${who}`,
   });
+  const extra = await loyalty.forCheckout(rewards && { ...rewards, source: "kiosk" }, menu, cart);
   let data;
   try {
-    data = await square("POST", "/online-checkout/payment-links", body(orderDraft(locationId, who, lineItems), "l"));
+    data = await square("POST", "/online-checkout/payment-links", body(applyRewards(orderDraft(locationId, who, lineItems), extra), "l"));
   } catch (err) {
     // Some accounts don't allow a pickup step on checkout links; fall back to the name as the ticket label.
     if (!/fulfillment/i.test(String(err.message))) throw err;
-    const draft = orderDraft(locationId, who, lineItems);
+    const draft = applyRewards(orderDraft(locationId, who, lineItems), extra);
     delete draft.fulfillments;
     draft.reference_id = who;
     data = await square("POST", "/online-checkout/payment-links", body(draft, "l2"));

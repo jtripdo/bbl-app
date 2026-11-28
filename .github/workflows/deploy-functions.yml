@@ -28,11 +28,15 @@ jobs:
           SQUARE_ACCESS_TOKEN: ${{ secrets.SQUARE_ACCESS_TOKEN }}
           SQUARE_WEBHOOK_SIGNATURE_KEY: ${{ secrets.SQUARE_WEBHOOK_SIGNATURE_KEY }}
           SQUARE_WEBHOOK_URL: ${{ secrets.SQUARE_WEBHOOK_URL }}
+          BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
+          BUSINESS_ADDRESS: ${{ secrets.BUSINESS_ADDRESS }}
         run: |
           {
             echo "SQUARE_ACCESS_TOKEN=$SQUARE_ACCESS_TOKEN"
             echo "SQUARE_WEBHOOK_SIGNATURE_KEY=$SQUARE_WEBHOOK_SIGNATURE_KEY"
             echo "SQUARE_WEBHOOK_URL=$SQUARE_WEBHOOK_URL"
+            if [ -n "$BREVO_API_KEY" ]; then echo "BREVO_API_KEY=$BREVO_API_KEY"; fi
+            if [ -n "$BUSINESS_ADDRESS" ]; then echo "BUSINESS_ADDRESS=\"$BUSINESS_ADDRESS\""; fi
           } > functions/.env
 
       - name: Check which secrets are set
