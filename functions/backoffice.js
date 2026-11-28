@@ -194,12 +194,16 @@ async function history(date, weeks) {
 }
 
 async function handle(req) {
-  await allowed(req);
+  const who = await allowed(req);
   const b = req.body || {};
   if (b.action === "sales") return sales(String(b.from || ""), String(b.to || ""));
   if (b.action === "menu") return menu();
   if (b.action === "scan") return scan(b.images, b.known);
   if (b.action === "history") return history(String(b.date || ""), b.weeks);
+  if (b.action === "labor") return require("./labor").labor(String(b.from || ""), String(b.to || ""));
+  if (b.action === "reportGet") return require("./report").getSettings();
+  if (b.action === "reportSet") { if (who.role !== "owner") throw new BOError("Only owners can change the daily email."); return require("./report").setSettings(b.emails, b.enabled, who.name); }
+  if (b.action === "reportTest") return require("./report").send(require("./report").todayKey(), true);
   throw new BOError("Unknown action.");
 }
 
