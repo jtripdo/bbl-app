@@ -1,0 +1,68 @@
+rules_version = '2';
+
+// Buttermilk Biscuit Lab database rules.
+// - Website and kitchen display can only READ pop-up events and kitchen tickets.
+// - Everything else needs a signed-in, active team member.
+// - Back Office data (invoices, prices, recipes costs, counts) needs a role that can open the Back Office.
+// - Team accounts, invites and settings are changed only by the server (Cloud Functions).
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function staffPath() { return /databases/$(database)/documents/staff/$(request.auth.uid); }
+    function isTeam() {
+      return request.auth != null
+        && exists(staffPath())
+        && get(staffPath()).data.get('active', true) != false;
+    }
+    function role() { return get(staffPath()).data.get('role', 'staff'); }
+    function isManager() { return isTeam() && role() in ['owner', 'manager']; }
+    function accessPath() { return /databases/$(database)/documents/settings/access; }
+    function canBackOffice() {
+      return isTeam() && (
+        role() == 'owner'
+        || (!exists(accessPath()) && role() == 'manager')
+        || (exists(accessPath()) && role() in get(accessPath()).data.get('pages', {}).get('backoffice', ['manager']))
+      );
+    }
+
+    // Public: pop-up calendar on the website, kitchen display screens.
+    match /events/{id} {
+      allow read: if true;
+      allow write: if isTeam();
+    }
+    match /kdsOrders/{id} {
+      allow read: if true;
+      allow write: if false; // only the server writes tickets; bump/recall go through kdsAction
+    }
+
+    // Team app
+    match /listItems/{id}   { allow read, write: if isTeam(); }
+    match /checks/{id}      { allow read, write: if isTeam(); }
+    match /reports/{id}     { allow read, write: if isTeam(); }
+    match /chat/{id}        { allow read, write: if isTeam(); }
+    match /needs/{id}       { allow read, write: if isTeam(); }
+    match /parItems/{id}    { allow read, write: if isTeam(); }
+    match /parSheets/{id}   { allow read, write: if isTeam(); }
+    match /mpParItems/{id}  { allow read, write: if isTeam(); }
+    match /mpParSheets/{id} { allow read, write: if isTeam(); }
+    match /menu/{id}        { allow read, write: if isTeam(); }
+    match /recipes/{id}     { allow read, write: if isTeam(); }
+    match /prepLabels/{id}  { allow read, write: if isTeam(); }
+    match /prepItems/{id} {
+      allow read: if isTeam();
+      allow write: if isManager();
+    }
+
+    // Back Office
+    match /boProducts/{id} { allow read, write: if canBackOffice(); }
+    match /boPrices/{id}   { allow read, write: if canBackOffice(); }
+    match /boInvoices/{id} { allow read, write: if canBackOffice(); }
+    match /boRecipes/{id}  { allow read, write: if canBackOffice(); }
+    match /boCounts/{id}   { allow read, write: if canBackOffice(); }
+
+    // staff, usernames, invites, settings and anything else: server only.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
