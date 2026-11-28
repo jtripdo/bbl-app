@@ -19,7 +19,7 @@ import {showTemps} from './temps.js';
 import {showHandoff} from './handoff.js';
 import {showWebsite} from './website.js';
 import {watchAlerts} from './alerts.js';
-import {showBO,showInvoices,showInvoiceForm,showProducts,showRecipeCosts,showRecipeForm,showCount,showPL} from './backoffice.js';
+import {showOrderGuide,showCateringCustomers,showBO,showInvoices,showInvoiceForm,showProducts,showRecipeCosts,showRecipeForm,showCount,showPL} from './backoffice.js';
 
 const cur={v:'who'};
 
@@ -28,7 +28,7 @@ function renderBar(){
 }
 
 // Page access by role (set by owners on the Team screen). Owners see everything.
-const PAGE_OF={parhist:'par',mpmenu:'mealprep',mprecipes:'mealprep',mppar:'mealprep',mpparhist:'mealprep',load:'events',popload:'events',poptemplate:'events',bo:'backoffice',boinv:'backoffice',boinvnew:'backoffice',boprod:'backoffice',borec:'backoffice',borecedit:'backoffice',bocount:'backoffice',bopl:'backoffice',boforecast:'backoffice',prepitems:'labels'};
+const PAGE_OF={parhist:'par',mpmenu:'mealprep',mprecipes:'mealprep',mppar:'mealprep',mpparhist:'mealprep',load:'events',popload:'events',poptemplate:'events',bo:'backoffice',boinv:'backoffice',boinvnew:'backoffice',boprod:'backoffice',borec:'backoffice',borecedit:'backoffice',bocount:'backoffice',bopl:'backoffice',boforecast:'backoffice',boorder:'backoffice',bocater:'backoffice',prepitems:'labels'};
 const MANAGER_ONLY=['people','backoffice','website'];
 export const canSee=p=>S.role==='owner'||((S.access&&S.access[p])||(MANAGER_ONLY.includes(p)?['manager']:['manager','staff'])).includes(S.role);
 
@@ -53,7 +53,7 @@ function go(v,arg,title){
     cleaning:()=>showList('cleaning','Cleaning List',{note:'This list resets every day.'}),
     prep:()=>showList('prep_'+today(),'Prep Sheet',{ph:'Add a prep task (e.g. 4 lb butter, cubed)',note:'This list is just for today. Tomorrow starts fresh.'}),
     chat:showChat,needs:showNeeds,events:showEvents,mode:showMode,
-    backoffice:showBO,bo:showBO,boinv:showInvoices,boinvnew:()=>showInvoiceForm(arg),boprod:showProducts,borec:showRecipeCosts,borecedit:()=>showRecipeForm(arg),bocount:showCount,bopl:showPL,boforecast:showForecast,labels:showLabels,prepitems:showPrepItems,loyalty:showLoyalty,eightysix:showEightySix,temps:showTemps,handoff:showHandoff,website:showWebsite,
+    backoffice:showBO,bo:showBO,boinv:showInvoices,boinvnew:()=>showInvoiceForm(arg),boprod:showProducts,borec:showRecipeCosts,borecedit:()=>showRecipeForm(arg),bocount:showCount,bopl:showPL,boorder:showOrderGuide,bocater:showCateringCustomers,boforecast:showForecast,labels:showLabels,prepitems:showPrepItems,loyalty:showLoyalty,eightysix:showEightySix,temps:showTemps,handoff:showHandoff,website:showWebsite,
     load:()=>showList('load_'+arg,'Load Out: '+(title||'Event'),{key:'event',back:'events',ph:'Add something to load (e.g. 2 hotel pans)'}),
     popload:()=>showPopLoad(arg,title),
     poptemplate:()=>showList(TEMPLATE,'Pop-up Load Out Template',{key:'template',back:'events',ph:'Add an item every pop-up needs',note:'Every pop-up gets these items on its Load Out Sheet. Mark items "Not needed" on a single pop-up instead of removing them here.'})
