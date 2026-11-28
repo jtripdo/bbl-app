@@ -35,6 +35,11 @@ export function showLoyalty(){
   <details class="add" id="ljoin"><summary>+ Sign up a customer</summary><div>
     <input id="jn" placeholder="Name" maxlength="40"><input id="jp" type="tel" placeholder="Phone" maxlength="16"><input id="je" type="email" placeholder="Email" maxlength="80">
     <button class="btn" id="jgo">Sign up (+25 points)</button><p id="jm" class="small"></p></div></details>
+  ${S.role==='owner'?`<details class="add" id="lsw"><summary>⚙️ Customer emails (owner)</summary><div>
+    <p class="mut small" id="swready"></p>
+    <label class="ib" style="gap:8px;margin:6px 0"><input type="checkbox" id="swc" style="width:auto"> Rewards codes (lets customers use rewards and credit at the kiosk and online)</label>
+    <label class="ib" style="gap:8px;margin:6px 0"><input type="checkbox" id="swa" style="width:auto"> All other emails: welcome, birthday, credit earned, order ready + review, pop-up alerts</label>
+    <button class="btn" id="swgo">Save</button><p id="swmsg" class="small"></p></div></details>`:''}
   ${isMgr()?`<details class="add" id="lmail"><summary>✉️ Email the pop-up list</summary><div>
     <input id="ms" placeholder="Subject (e.g. Double points this Saturday!)" maxlength="90">
     <textarea id="mm" rows="6" placeholder="Your message" maxlength="3000"></textarea>
@@ -56,6 +61,11 @@ export function showLoyalty(){
     try{const r=await api('join',{name:$('#jn').value.trim(),phone:$('#jp').value,email:$('#je').value.trim(),alerts:true});showMember(r.member.phone);}
     catch(e){$('#jm').innerHTML=`<span class="bad">${esc(e.message)}</span>`;$('#jgo').disabled=false;}
   };
+  if(S.role==='owner'){
+    const show=r=>{$('#swc').checked=r.codes;$('#swa').checked=r.auto;$('#swready').innerHTML=r.ready?'Email service is connected. Nothing is sent while these are off.':'<span class="bad">Email service key isn\'t set up yet (BREVO_API_KEY).</span> You can still set these now.';};
+    api('emailGet').then(show).catch(()=>{});
+    $('#swgo').onclick=async()=>{try{show(await api('emailSet',{codes:$('#swc').checked,auto:$('#swa').checked}));$('#swmsg').innerHTML='<span class="good">Saved.</span>';}catch(e){$('#swmsg').innerHTML=`<span class="bad">${esc(e.message)}</span>`;}};
+  }
   if(isMgr())$('#mgo').onclick=async()=>{
     const subject=$('#ms').value.trim(),message=$('#mm').value.trim();
     if(!subject||!message){$('#mmsg').innerHTML='<span class="bad">Add a subject and a message.</span>';return;}

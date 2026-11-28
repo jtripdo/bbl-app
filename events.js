@@ -21,7 +21,7 @@ export function showEvents(){
   }));
   $('#ev').onclick=e=>{
     const p=e.target.closest('[data-pop]');
-    if(p){updateDoc(doc(db,'events',p.dataset.pop),{popup:p.dataset.on!=='1'});return;}
+    if(p){const on=p.dataset.on!=='1';updateDoc(doc(db,'events',p.dataset.pop),on?{popup:true,needsAnnounce:true}:{popup:false});return;}
     const pr=e.target.closest('[data-pre]');
     if(pr){updateDoc(doc(db,'events',pr.dataset.pre),{preorder:pr.dataset.on!=='1'});return;}
     const r=e.target.closest('[data-rme]');
@@ -30,7 +30,7 @@ export function showEvents(){
   $('#ea').onclick=()=>{
     const title=$('#et').value.trim(),date=$('#ed').value;
     if(!title||!date){alert('Please enter an event name and date.');return;}
-    addDoc(collection(db,'events'),{title,date,time:$('#etm').value,endTime:$('#ete').value,location:$('#el').value.trim(),notes:$('#en').value.trim(),popup:$('#epu').checked,preorder:$('#epre').checked,by:S.me,at:serverTimestamp(),active:true});
+    addDoc(collection(db,'events'),{title,date,time:$('#etm').value,endTime:$('#ete').value,location:$('#el').value.trim(),notes:$('#en').value.trim(),popup:$('#epu').checked,needsAnnounce:$('#epu').checked,preorder:$('#epre').checked,by:S.me,at:serverTimestamp(),active:true});
     ['et','ed','etm','ete','el','en'].forEach(i=>$('#'+i).value='');$('#epu').checked=false;$('#epre').checked=true;
     document.querySelector('details.add').open=false;
   };

@@ -37,8 +37,11 @@ export function mountRewards(el, opts) {
       return;
     }
     let redeem = "";
-    const hasReward = opts.allowRedeem && i.canRedeem;
-    const hasCredit = opts.allowRedeem && i.credit > 0;
+    var redeemNote = "";
+    const online = i.redeemOnline !== false;
+    const hasReward = opts.allowRedeem && online && i.canRedeem;
+    const hasCredit = opts.allowRedeem && online && i.credit > 0;
+    if (opts.allowRedeem && !online && (i.canRedeem || i.credit > 0)) redeemNote = `<div class="small" style="margin-top:6px">To use your reward or credit, ask our team at the counter.</div>`;
     if (hasReward || hasCredit) {
       if (st.token) {
         redeem = `${hasReward ? `<label class="ck" style="margin-top:8px"><input type="checkbox" data-usereward ${st.useReward ? "checked" : ""}><span>Use my ${esc(i.rewardName)} (−${i.rewardPoints} points)</span></label>` : ""}
@@ -52,7 +55,7 @@ export function mountRewards(el, opts) {
       : `You'll earn points on this order.`;
     el.innerHTML = `<b class="t">⭐ ${esc(i.name ? `Hi ${i.name}! ` : "")}You have ${i.points} points${creditLine}</b>
       <span class="small">${opts.catering ? "" : (i.canRedeem ? `That's a ${esc(i.rewardName)}! ` : `${i.rewardPoints - i.points} to go until a ${esc(i.rewardName)}. `)}${earn}${opts.catering && i.credit > 0 ? " (Credit can't be used on catering.)" : ""}</span>
-      ${redeem}${st.err ? `<div class="err small" style="margin-top:6px">${esc(st.err)}</div>` : ""}`;
+      ${redeem}${redeemNote}${st.err ? `<div class="err small" style="margin-top:6px">${esc(st.err)}</div>` : ""}`;
   }
   async function lookup() {
     const p = digits(opts.phoneInput.value);

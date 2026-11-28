@@ -17,9 +17,31 @@ function layout(title, body, unsub) {
 }
 const button = (href, text) => `<p style="margin:18px 0 4px"><a href="${href}" style="background:#F4B931;color:#1F1A14;text-decoration:none;font-weight:700;padding:12px 22px;border-radius:999px;display:inline-block">${esc(text)}</a></p>`;
 
-async function send(to, subject, html) {
+class MailNotReady extends Error {}
+class MailOff extends Error {}
+
+// Owner switches in the team app (settings/email): codes = rewards sign-in codes,
+// auto = everything else (welcome, birthday, credit, order ready, pop-up alerts).
+// Both start OFF so nothing goes out until the owner is ready.
+let switchCache = { at: 0, v: null };
+async function switches() {
+  if (Date.now() - switchCache.at < 60000 && switchCache.v) return switchCache.v;
+  const { getFirestore } = require("firebase-admin/firestore");
+  const s = await getFirestore().collection("settings").doc("email").get();
+  const v = { codes: false, auto: false, ...(s.exists ? s.data() : {}) };
+  switchCache = { at: Date.now(), v };
+  return v;
+}
+function resetSwitches() { switchCache = { at: 0, v: null }; }
+async function allowed(kind) {
+  const sw = await switches();
+  if (!(kind === "code" ? sw.codes : sw.auto)) throw new MailOff(kind === "code" ? "Rewards codes aren't turned on yet. Ask our team and they can check your points or use your rewards at the counter." : "Emails are switched off.");
+}
+
+async function send(to, subject, html, kind = "auto") {
+  await allowed(kind);
   const key = process.env.BREVO_API_KEY;
-  if (!key) throw new Error("Email isn't set up yet (BREVO_API_KEY missing).");
+  if (!key) throw new MailNotReady("Rewards emails aren't turned on yet. Please try again soon.");
   const list = (Array.isArray(to) ? to : [to]).filter((t) => t && t.email);
   if (!list.length) return { sent: 0 };
   const r = await fetch("https://api.brevo.com/v3/smtp/email", {
@@ -33,8 +55,9 @@ async function send(to, subject, html) {
 
 // Same message to many people, each with their own unsubscribe link (one request per 500).
 async function broadcast(people, subject, title, body) {
+  await allowed("auto");
   const key = process.env.BREVO_API_KEY;
-  if (!key) throw new Error("Email isn't set up yet (BREVO_API_KEY missing).");
+  if (!key) throw new MailNotReady("Emails aren't turned on yet (BREVO_API_KEY missing).");
   let sent = 0;
   for (let i = 0; i < people.length; i += 500) {
     const chunk = people.slice(i, i + 500).filter((p) => p.email);
@@ -55,4 +78,4 @@ async function broadcast(people, subject, title, body) {
   return { sent };
 }
 
-module.exports = { send, broadcast, layout, button, esc, SITE };
+module.exports = { MailNotReady, MailOff, switches, resetSwitches, send, broadcast, layout, button, esc, SITE };

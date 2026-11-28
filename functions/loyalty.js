@@ -123,7 +123,8 @@ async function peek(phone) {
   const m = await getMember(phone10(phone));
   if (!m) return { member: false, rewardPoints: REWARD_POINTS, joinBonus: JOIN_BONUS, rewardName: REWARD_NAME };
   const cr = await creditBalance(m.id);
-  return { member: true, points: m.points, credit: cr.cents, canRedeem: m.points >= REWARD_POINTS, rewardPoints: REWARD_POINTS, rewardName: REWARD_NAME, email: mask(m.email), name: m.name ? m.name.split(" ")[0] : "" };
+  const sw = await mail.switches().catch(() => ({ codes: false }));
+  return { redeemOnline: !!(sw.codes && process.env.BREVO_API_KEY), member: true, points: m.points, credit: cr.cents, canRedeem: m.points >= REWARD_POINTS, rewardPoints: REWARD_POINTS, rewardName: REWARD_NAME, email: mask(m.email), name: m.name ? m.name.split(" ")[0] : "" };
 }
 
 // Email a 6-digit code to the member; the code proves it's them.
@@ -136,8 +137,13 @@ async function sendCode(phone) {
   if (cur.exists && Date.now() - (cur.data().sentAt || 0) < 30000) throw new RewardsError("Code just sent. Check your email (and spam).");
   const code = String(crypto.randomInt(100000, 1000000));
   await ref.set({ hash: hash(p + code), exp: Date.now() + 15 * 60000, tries: 0, sentAt: Date.now() });
-  await mail.send({ email: m.email, name: m.name }, `Your BBL Rewards code: ${code}`,
-    mail.layout("your rewards code", `<p>Your code is</p><p style="font-size:32px;font-weight:800;letter-spacing:.2em;margin:6px 0">${code}</p><p style="color:#7A7064">It works for 15 minutes. Didn't ask for it? Ignore this email.</p>`));
+  try {
+    await mail.send({ email: m.email, name: m.name }, `Your BBL Rewards code: ${code}`,
+      mail.layout("your rewards code", `<p>Your code is</p><p style="font-size:32px;font-weight:800;letter-spacing:.2em;margin:6px 0">${code}</p><p style="color:#7A7064">It works for 15 minutes. Didn't ask for it? Ignore this email.</p>`), "code");
+  } catch (e) {
+    await ref.delete().catch(() => {}); // didn't go out: don't lock them out
+    throw e;
+  }
   return { sent: true, email: mask(m.email) };
 }
 async function verifyCode(phone, code) {
@@ -552,6 +558,15 @@ async function adminAddCredit(phone, dollars, reason, by) {
   });
   return adminMember(p);
 }
+async function adminEmailGet() {
+  const sw = await mail.switches();
+  return { codes: !!sw.codes, auto: !!sw.auto, ready: !!process.env.BREVO_API_KEY };
+}
+async function adminEmailSet(codes, auto, by) {
+  await db().collection("settings").doc("email").set({ codes: !!codes, auto: !!auto, by, at: FieldValue.serverTimestamp() });
+  mail.resetSwitches();
+  return adminEmailGet();
+}
 async function adminStats() {
   const [m, s] = await Promise.all([db().collection("loyalty").count().get(), db().collection("subscribers").where("active", "==", true).count().get()]);
   return { members: m.data().count, subscribers: s.data().count, rewardPoints: REWARD_POINTS, rewardName: REWARD_NAME };
@@ -569,7 +584,7 @@ function withBirthMonth(data) { return data.birthday ? { ...data, birthMonth: da
 
 module.exports = {
   RewardsError, phone10, join, peek, sendCode, verifyCode, account, subscribe, unsubscribe,
-  forCheckout, rewardValue, onOrder, releaseCredits, creditBalance, adminUseCredit, adminAddCredit, orderReady, announcePopup, popupsToday, birthdays,
+  adminEmailGet, adminEmailSet, forCheckout, rewardValue, onOrder, releaseCredits, creditBalance, adminUseCredit, adminAddCredit, orderReady, announcePopup, popupsToday, birthdays,
   adminSearch, adminMember, adminAdjust, adminSale, adminRedeem, adminStats, adminBroadcast, withBirthMonth,
   REWARD_POINTS, REWARD_NAME, JOIN_BONUS,
 };
