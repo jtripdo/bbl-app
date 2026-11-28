@@ -1,5 +1,7 @@
 import {db,$,esc,sub,today,dstr,fmt,dd,dlabel,t12,setView,collection,onSnapshot,query,where,orderBy,limit} from './core.js';
 import {icon} from './icons.js';
+import {watchAlerts,alertsHtml} from './alerts.js';
+import {noteCard,handleNoteClick} from './handoff.js';
 
 export function showToday(){
   const t=today();
@@ -8,6 +10,7 @@ export function showToday(){
   let items=[],checks=[],events=[],needs=0,lastPar=null;
   setView(`<div class="top"><button class="back" data-go="dash">← Menu</button><h2>Today</h2></div>
   <p class="mut">${new Date().toLocaleDateString([], {weekday:'long',month:'long',day:'numeric'})}</p>
+  <div id="ha"></div>
   <div class="sec">Events</div><div id="te"><p class="mut small">Loading...</p></div>
   <div class="sec">Checklists</div><div id="tl"></div>
   <div class="sec">Other</div><div id="to"></div>`);
@@ -34,6 +37,13 @@ export function showToday(){
     <div class="card" data-go="needs"><div class="ih"><b class="ib">${icon('cart',18)} Needs and Wants</b><span class="small">${needs} open</span></div></div>`;
   };
 
+  watchAlerts(list=>{
+    const el=$('#ha');if(!el)return;
+    const notes=(list.find(a=>a.notes)||{}).notes||[];
+    const rest=list.filter(a=>!a.notes);
+    el.innerHTML=(notes.length?'<div class="sec">Shift notes</div>'+notes.map(noteCard).join(''):'')+(rest.length?'<div class="sec">Heads up</div>'+alertsHtml(rest,esc):'');
+  });
+  const ha=$('#ha');if(ha)ha.onclick=handleNoteClick;
   sub(onSnapshot(query(collection(db,'listItems'),where('scope','in',scopes)),s=>{
     items=s.docs.map(dd).filter(i=>i.active!==false).sort((a,b)=>(a.at?.seconds||0)-(b.at?.seconds||0));draw();
   }));

@@ -54,6 +54,12 @@ service cloud.firestore {
     match /menu/{id}        { allow read, write: if isTeam(); }
     match /recipes/{id}     { allow read, write: if isTeam(); }
     match /prepLabels/{id}  { allow read, write: if isTeam(); }
+    match /checkPhotos/{id} { allow read, write: if isTeam(); }
+    match /tempUnits/{id}   { allow read: if isTeam(); allow write: if isManager(); }
+    match /tempLogs/{id}    { allow read, create: if isTeam(); }
+    match /coolLogs/{id}    { allow read, write: if isTeam(); }
+    match /handoffs/{id}    { allow read, write: if isTeam(); }
+    match /handoffPhotos/{id} { allow read, write: if isTeam(); }
     match /prepItems/{id} {
       allow read: if isTeam();
       allow write: if isManager();
