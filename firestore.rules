@@ -67,6 +67,9 @@ service cloud.firestore {
     match /tempLogs/{id}    { allow read, create: if isTeam(); }
     match /coolLogs/{id}    { allow read, write: if isTeam(); }
     match /handoffs/{id}    { allow read, write: if isTeam(); }
+    match /training/{id}       { allow read: if isTeam(); allow write: if isManager(); }
+    match /trainingPhotos/{id} { allow read: if isTeam(); allow write: if isManager(); }
+    match /trainingDone/{id}   { allow read: if isTeam(); allow create: if isTeam() && request.resource.data.uid == request.auth.uid; }
     match /handoffPhotos/{id} { allow read, write: if isTeam(); }
     match /prepItems/{id} {
       allow read: if isTeam();
