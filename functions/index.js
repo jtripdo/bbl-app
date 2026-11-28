@@ -13,7 +13,7 @@ const online = require("./online");
 const backoffice = require("./backoffice");
 const catering = require("./catering");
 const loyalty = require("./loyalty");
-const { onDocumentWritten } = require("firebase-functions/v2/firestore");
+const mail = require("./mail");
 const team = require("./team");
 
 initializeApp();
@@ -265,7 +265,7 @@ exports.rewards = onRequest({ cors: true }, async (req, res) => {
       default: return res.status(400).json({ error: "Unknown action." });
     }
   } catch (err) {
-    if (err instanceof loyalty.RewardsError) return res.status(400).json({ error: err.message });
+    if (err instanceof loyalty.RewardsError || err instanceof mail.MailNotReady) return res.status(400).json({ error: err.message });
     logger.error("Rewards failed", { action: b.action, err: err.message });
     return res.status(500).json({ error: "Something went wrong. Please try again." });
   }
@@ -296,22 +296,30 @@ exports.loyaltyAdmin = onRequest({ cors: true }, async (req, res) => {
       default: return res.status(400).json({ error: "Unknown action." });
     }
   } catch (err) {
-    if (err instanceof loyalty.RewardsError) return res.status(400).json({ error: err.message });
+    if (err instanceof loyalty.RewardsError || err instanceof mail.MailNotReady) return res.status(400).json({ error: err.message });
     logger.error("Rewards admin failed", { action: b.action, err: err.message });
     return res.status(500).json({ error: "Something went wrong. Please try again." });
   }
 });
 
-// 14) New pop-up on the calendar -> email everyone on the alerts list (once).
-exports.popupAnnounce = onDocumentWritten("events/{id}", async (event) => {
-  const before = event.data && event.data.before && event.data.before.exists ? event.data.before.data() : null;
-  const after = event.data && event.data.after && event.data.after.exists ? event.data.after.data() : null;
-  if (!after || !after.popup || after.active === false || after.announced) return;
-  if (before && before.popup) return; // only when it first goes on the website
+// 14) New pop-ups: the team app flags them (needsAnnounce); this emails the alerts list.
+// (A scheduled check instead of a database trigger, so no extra Google permissions are needed.)
+exports.popupAnnounce = onSchedule({ schedule: "every 10 minutes", timeoutSeconds: 120 }, async () => {
+  const snap = await db.collection("events").where("needsAnnounce", "==", true).get();
   const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" });
-  if (!after.date || after.date < today) return;
-  await event.data.after.ref.update({ announced: true });
-  try { await loyalty.announcePopup(event.params.id, after); } catch (e) { logger.error("Pop-up announce failed", { err: e.message }); }
+  for (const d of snap.docs) {
+    const e = d.data();
+    await d.ref.update({ needsAnnounce: false });
+    if (!e.popup || e.active === false || e.announced || !e.date || e.date < today) continue;
+    try {
+      await loyalty.announcePopup(d.id, e);
+      await d.ref.update({ announced: true });
+    } catch (err) {
+      // Email not set up yet: try again later instead of dropping the announcement.
+      if (err instanceof mail.MailNotReady) await d.ref.update({ needsAnnounce: true });
+      else logger.error("Pop-up announce failed", { err: err.message });
+    }
+  }
 });
 
 // 15) Every morning: "we're out today" emails and birthday points.
