@@ -220,6 +220,7 @@ $("startBtn").addEventListener("click", () => {
   const opt = sel.options[sel.selectedIndex];
   state.location = { id: sel.value, name: opt ? opt.textContent : "" };
   store("kds-location", state.location);
+  drawE86();
   showLocation();
   try {
     audio = audio || new (window.AudioContext || window.webkitAudioContext)();
@@ -242,3 +243,18 @@ $("later").addEventListener("click", () => {
   draw();
 });
 $("upClose").addEventListener("click", () => $("upcoming").classList.add("hide"));
+
+// ---------- 86 strip: items 86'd from the team app for this location ----------
+let e86 = [];
+onSnapshot(collection(db, "eighty6"), (snap) => { e86 = snap.docs.map((d) => d.data()); drawE86(); }, () => {});
+function drawE86() {
+  const el = document.getElementById("e86");
+  if (!el) return;
+  const now = Date.now();
+  const locId = state.location && state.location.id;
+  const list = e86.filter((e) => (!e.until || e.until > now) && (e.location === "all" || !locId || e.location === locId))
+    .map((e) => e.name).sort();
+  el.classList.toggle("hide", !list.length);
+  el.innerHTML = list.length ? `<b>86</b>${list.map((n) => `<span>${n.replace(/[&<>]/g, "")}</span>`).join("")}` : "";
+}
+setInterval(drawE86, 60000);

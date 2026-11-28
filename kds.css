@@ -91,3 +91,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .up-empty { color: var(--muted); font-size: 20px; padding: 30px; }
 .hide { display: none !important; }
 .muted { color: var(--muted); }
+
+/* 86 strip under the header */
+.e86 { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 8px 14px; background: #3a1d17; color: #ffd9cf; font-weight: 700; font-size: 15px; }
+.e86 b { background: #ef8a6f; color: #1a1208; border-radius: 6px; padding: 2px 8px; letter-spacing: .04em; }
+.e86 span { background: rgba(255,255,255,.08); border-radius: 999px; padding: 3px 10px; }
