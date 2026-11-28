@@ -46,6 +46,7 @@ service cloud.firestore {
       allow read: if true;
       allow write: if isManager();
     }
+    match /specials/{id} { allow read, write: if isManager(); }
 
     // Team app
     match /listItems/{id}   { allow read, write: if isTeam(); }
