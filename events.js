@@ -10,7 +10,7 @@ export function showEvents(){
   <textarea id="en" rows="2" placeholder="Notes (optional, never shown on the website)" maxlength="500"></textarea>
   <label class="ib" style="gap:8px;margin:6px 0"><input type="checkbox" id="epu" style="width:auto"> Show on website pop-up calendar</label>
   <label class="ib" style="gap:8px;margin:6px 0"><input type="checkbox" id="epre" style="width:auto" checked> Customers can pre-order online</label>
-  <button class="btn" id="ea">Add event</button></div></details><div id="ev"></div>`);
+  <button class="btn" id="ea">Add event</button></div></details><div id="ev"></div><details class="add" style="margin-top:14px"><summary>Past events (last 60 days)</summary><div id="past"></div></details>`);
   sub(onSnapshot(collection(db,'events'),s=>{
     const t=today();
     const rows=s.docs.map(dd).filter(e=>e.active!==false&&e.date&&e.date>=t).sort((a,b)=>(a.date+(a.time||'')).localeCompare(b.date+(b.time||'')));
@@ -18,6 +18,9 @@ export function showEvents(){
     <h3 style="margin:4px 0">${esc(e.title)}</h3>
     ${e.location?`<div class="ib mut">${icon('pin',16)} ${esc(e.location)}</div>`:''}${e.notes?`<div class="mut small">${esc(e.notes)}</div>`:''}
     <div style="margin-top:8px"><button class="btn sm" data-go="${e.popup?'popload':'load'}" data-arg="${e.id}" data-title="${esc(e.title)}">Load Out Sheet</button> <button class="link" data-pop="${e.id}" data-on="${e.popup?1:0}">${e.popup?'Hide from website':'Show on website'}</button>${e.popup?` <button class="link" data-pre="${e.id}" data-on="${e.preorder===false?0:1}">${e.preorder===false?'Turn on pre-orders':'Turn off pre-orders'}</button>`:''} <button class="link" data-rme="${e.id}">Remove</button></div></div>`).join(''):'<p class="mut center">No upcoming events. Add one above.</p>';
+    const cut=new Date(Date.now()-60*864e5).toLocaleDateString('en-CA');
+    const past=s.docs.map(dd).filter(e=>e.active!==false&&e.date&&e.date<t&&e.date>=cut).sort((a,b)=>b.date.localeCompare(a.date));
+    $('#past').innerHTML=past.length?past.map(e=>`<div class="card"><span class="mut small">${dlabel(e.date)}</span><h3 style="margin:4px 0">${esc(e.title)}</h3><button class="btn sm" data-go="${e.popup?'popload':'load'}" data-arg="${e.id}" data-title="${esc(e.title)}">Load Out Sheet</button></div>`).join(''):'<p class="mut small">No past events.</p>';
   }));
   $('#ev').onclick=e=>{
     const p=e.target.closest('[data-pop]');
