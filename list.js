@@ -1,12 +1,13 @@
 import {db,S,$,esc,sub,today,fmt,dd,setView,topbar,collection,doc,setDoc,addDoc,updateDoc,deleteDoc,onSnapshot,query,where,serverTimestamp} from './core.js';
 import {getDoc} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import {sendReport} from './report.js';
+import {takePhoto,viewPhoto} from './photo.js';
 
 export function showList(scope,title,opt={}){
   const key=opt.key||today();
   const pre=scope+'__'+key+'__';
   const daily=!opt.key;
-  setView(topbar(title,opt.back||'dash')+`<div class="mut" id="prog"></div><p class="mut small">Tap an item to mark it complete.</p><div id="rs" class="small mut"></div><button class="btn ghost sm" id="rb" style="display:none">Email report</button><div id="items"></div><div class="addrow"><input id="nt" placeholder="${esc(opt.ph||'Add an item')}" maxlength="200"><button class="btn" id="ab">Add</button></div>${opt.note?`<p class="mut small">${esc(opt.note)}</p>`:''}`);
+  setView(topbar(title,opt.back||'dash')+`<div class="mut" id="prog"></div><p class="mut small">Tap an item to mark it complete. Items with 📷 need a photo.</p><div id="rs" class="small mut"></div><button class="btn ghost sm" id="rb" style="display:none">Email report</button><div id="items"></div><div class="addrow"><input id="nt" placeholder="${esc(opt.ph||'Add an item')}" maxlength="200"><button class="btn" id="ab">Add</button></div>${opt.note?`<p class="mut small">${esc(opt.note)}</p>`:''}`);
   let items=[],checks={},touched=false,tried=false;
   const setRs=t=>{const e=$('#rs');if(e)e.textContent=t;};
   const emailIt=async()=>{
@@ -31,7 +32,8 @@ export function showList(scope,title,opt={}){
     $('#rb').style.display=(daily&&all)?'inline-block':'none';
     $('#items').innerHTML=items.length?items.map(i=>{
       const c=checks[i.id];
-      return `<div class="row${c?' done':''}" data-t="${i.id}"><div class="chk">${c?'✓':''}</div><div class="txt">${esc(i.text)}${c?`<div class="who">${esc(c.by)} · ${fmt(c.at)}</div>`:''}</div><button class="x" data-rm="${i.id}" aria-label="Remove">✕</button></div>`;
+      const mgr=S.role==='owner'||S.role==='manager';
+      return `<div class="row${c?' done':''}" data-t="${i.id}"><div class="chk">${c?'✓':i.photo?'📷':''}</div><div class="txt">${esc(i.text)}${i.photo&&!c?'<div class="who">Needs a photo</div>':''}${c?`<div class="who">${esc(c.by)} · ${fmt(c.at)}${c.hasPhoto?` · <a href="#" data-ph="${esc(pre+i.id)}">📷 View photo</a>`:''}</div>`:''}</div>${mgr?`<button class="x" data-cam="${i.id}" aria-label="Require a photo" title="Require a photo" style="opacity:${i.photo?1:.35}">📷</button>`:''}<button class="x" data-rm="${i.id}" aria-label="Remove">✕</button></div>`;
     }).join(''):'<p class="mut center">Nothing here yet. Add the first item below.</p>';
     if(daily&&all&&touched&&!tried)tryReport();
   };
@@ -43,13 +45,27 @@ export function showList(scope,title,opt={}){
     checks={};s.docs.map(dd).forEach(c=>{checks[c.itemId]=c;});
     draw();
   }));
-  $('#items').onclick=e=>{
+  $('#items').onclick=async e=>{
+    const ph=e.target.closest('[data-ph]');
+    if(ph){e.preventDefault();const s=await getDoc(doc(db,'checkPhotos',ph.dataset.ph));if(s.exists())viewPhoto(s.data().img);else alert('Photo not found.');return;}
+    const cam=e.target.closest('[data-cam]');
+    if(cam){const it=items.find(x=>x.id===cam.dataset.cam);updateDoc(doc(db,'listItems',cam.dataset.cam),{photo:!(it&&it.photo)});return;}
     const rm=e.target.closest('[data-rm]');
     if(rm){if(confirm('Remove this item from the list?'))updateDoc(doc(db,'listItems',rm.dataset.rm),{active:false});return;}
     const row=e.target.closest('[data-t]');if(!row)return;
     const id=row.dataset.t,ref=doc(db,'checks',pre+id);
     if(checks[id]){if(confirm('Undo this check?'))deleteDoc(ref);}
-    else{touched=true;setDoc(ref,{key:scope+'|'+key,itemId:id,by:S.me,at:serverTimestamp()});}
+    else{
+      const it=items.find(x=>x.id===id);
+      if(it&&it.photo){
+        let img;try{img=await takePhoto();}catch(err){alert(err.message);return;}
+        if(!img)return; // canceled: stays unchecked
+        await setDoc(doc(db,'checkPhotos',pre+id),{img,key:scope+'|'+key,itemId:id,by:S.me,at:serverTimestamp()});
+        touched=true;setDoc(ref,{key:scope+'|'+key,itemId:id,by:S.me,at:serverTimestamp(),hasPhoto:true});
+        return;
+      }
+      touched=true;setDoc(ref,{key:scope+'|'+key,itemId:id,by:S.me,at:serverTimestamp()});
+    }
   };
   $('#rb').onclick=emailIt;
   const add=()=>{
