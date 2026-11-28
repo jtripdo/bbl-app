@@ -41,6 +41,12 @@ service cloud.firestore {
       allow write: if isTeam();
     }
 
+    // Website content (weekly special, Instagram posts): public read, managers edit.
+    match /site/{id} {
+      allow read: if true;
+      allow write: if isManager();
+    }
+
     // Team app
     match /listItems/{id}   { allow read, write: if isTeam(); }
     match /checks/{id}      { allow read, write: if isTeam(); }

@@ -35,6 +35,7 @@
       <h1>Order ahead.<br><span class="hl">Grab it hot.</span></h1>
       <p class="lede">Pick a spot, build your order, and choose ASAP or a time later today.</p>
     </div>
+    <div class="wrap hide" id="special" style="margin-bottom:18px"></div>
     <div class="wrap"><div id="storeList" class="store-grid"><p class="muted">Loading locations…</p></div></div>
   </section>
 
@@ -135,5 +136,6 @@
   </footer>
 
   <script type="module" src="order.js?v=20261125h"></script>
+  <script type="module">import { renderSpecial } from "./special.js"; renderSpecial(document.getElementById("special"), { noButton: true });</script>
 </body>
 </html>
