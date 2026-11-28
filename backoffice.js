@@ -75,6 +75,8 @@ export function showBO(){
     <button class="tile" data-go="boprod">Products & Prices</button>
     <button class="tile" data-go="borec">Recipe Costing</button>
     <button class="tile" data-go="bocount">Inventory Count</button>
+    <button class="tile" data-go="boorder">Order Guide</button>
+    <button class="tile" data-go="bocater">Catering Customers</button>
     <button class="tile" data-go="boforecast">Prep Forecast</button>
     <button class="tile" data-go="labels">Prep & Labels</button>
     <button class="tile wide" data-go="bopl">Food Cost & P&L</button>
@@ -357,6 +359,55 @@ export function showCount(){
     catch(e){$('#cmsg').textContent='Couldn\'t save: '+e.message;}
     $('#csave').disabled=false;
   };
+}
+
+// ---------- Order guide: par − on hand, by vendor ----------
+export function showOrderGuide(){
+  setView(STYLE+topbar('Order Guide','bo')+`<p class="mut small">Set a par (how much you want on hand) for each product. After an inventory count, this shows what to order from each vendor. Tap a number to change the par.</p><div id="og"><p class="mut">Loading…</p></div>`);
+  let prods=[],count=null;
+  const draw=()=>{
+    const have={};(count?count.lines:[]).forEach(l=>{have[l.productId]=l.qty;});
+    const g={};prods.forEach(p=>{const v=p.vendor||'No vendor';(g[v]=g[v]||[]).push(p);});
+    const head=count?`<div class="card"><b>Based on the count from ${esc(dlabel(count.date))}</b><div class="mut small">by ${esc(count.by||'')} · do a new count in Inventory Count for a fresh order</div></div>`:'<div class="card"><b>No inventory count yet.</b><div class="mut small">Do one in Back Office → Inventory Count. Until then, order amounts assume nothing on hand.</div></div>';
+    $('#og').innerHTML=prods.length?head+Object.keys(g).sort().map(v=>{
+      const rows=g[v].map(p=>{const h=have[p.id]??0,par=Number(p.par)||0,need=Math.max(0,Math.ceil((par-h)*100)/100);return {p,h,par,need};});
+      const order=rows.filter(r=>r.need>0);
+      const total=order.reduce((a,r)=>a+r.need*(r.p.lastPrice||0),0);
+      const text=`${v} order from Buttermilk Biscuit Lab:\n`+order.map(r=>`- ${r.p.name}: ${r.need} ${r.p.unit||''}`.trim()).join('\n');
+      return `<div class="sec">${esc(v)}</div><div class="card"><table class="bo-t"><tr><th>Item</th><th class="r">Par</th><th class="r">Have</th><th class="r">Order</th></tr>${rows.map(r=>`<tr><td>${esc(r.p.name)}<div class="mut small">${esc(r.p.unit||'')}</div></td><td class="r"><button class="link" data-par="${r.p.id}">${r.par||'set'}</button></td><td class="r">${r.h}</td><td class="r"><b class="${r.need?'':'mut'}">${r.need||'—'}</b></td></tr>`).join('')}</table>
+        ${order.length?`<div class="ih" style="margin-top:8px"><span class="mut small">About ${money(total)} at last prices</span><button class="btn sm" data-copy="${esc(encodeURIComponent(text))}">Copy order</button></div>`:'<p class="mut small">Nothing to order.</p>'}</div>`;
+    }).join(''):'<p class="mut">No products yet. They\'re added when you enter invoices.</p>';
+  };
+  watchProducts(l=>{prods=l;draw();});
+  sub(onSnapshot(query(collection(db,'boCounts'),orderBy('date','desc'),limit(1)),s=>{count=s.docs.map(dd)[0]||null;draw();}));
+  $('#og').onclick=async e=>{
+    const pb=e.target.closest('[data-par]');
+    if(pb){const p=prods.find(x=>x.id===pb.dataset.par);const v=prompt(`Par for ${p.name} (in ${p.unit||'units'})`,p.par??'');if(v===null)return;await updateDoc(doc(db,'boProducts',p.id),{par:num(v)});return;}
+    const c=e.target.closest('[data-copy]');
+    if(c){const t=decodeURIComponent(c.dataset.copy);try{if(navigator.share)await navigator.share({text:t});else{await navigator.clipboard.writeText(t);c.textContent='Copied!';}}catch(x){}}
+  };
+}
+
+// ---------- Catering customers: rebook follow-ups ----------
+export function showCateringCustomers(){
+  setView(STYLE+topbar('Catering Customers','bo')+`<p class="mut small">Everyone who has ordered catering online. Reach out to people who haven't booked in a while.</p><div id="cc"><p class="mut">Loading…</p></div>`);
+  sub(onSnapshot(query(collection(db,'events'),where('catering','==',true)),s=>{
+    const by={};
+    s.docs.map(dd).filter(e=>e.active!==false).forEach(e=>{
+      const k=(e.contactPhone||e.contactEmail||e.title||'').toLowerCase();if(!k)return;
+      const c=(by[k]=by[k]||{name:e.contactName||(e.title||'').replace(/^Catering: /,'').replace(/ \(.*\)$/,''),phone:e.contactPhone||'',email:e.contactEmail||'',company:e.company||'',orders:0,spent:0,last:'',next:''});
+      c.orders++;c.spent+=Number(e.total)||0;
+      if(e.date<=today()&&e.date>c.last)c.last=e.date;
+      if(e.date>today()&&(!c.next||e.date<c.next))c.next=e.date;
+    });
+    const days=d=>d?Math.floor((Date.now()-new Date(d+'T12:00').getTime())/86400000):9999;
+    const list=Object.values(by).sort((a,b)=>(a.next?1:0)-(b.next?1:0)||days(b.last)-days(a.last));
+    const msg=c=>`Hi ${c.name.split(' ')[0]}, it's Joe from Buttermilk Biscuit Lab! Thanks again for having us cater${c.company?' for '+c.company:''}. Got another event coming up? We'd love to feed your crew again: https://buttermilkbiscuitlab.com/cater.html`;
+    $('#cc').innerHTML=list.length?list.map(c=>{const d=days(c.last),due=!c.next&&d>=30;return `<div class="card" style="${due?'box-shadow:inset 4px 0 0 var(--acc),var(--shadow)':''}"><div class="ih"><b>${esc(c.name)}${c.company?` <span class="mut small">· ${esc(c.company)}</span>`:''}</b><b>${money(c.spent)}</b></div>
+      <div class="mut small">${c.orders} order${c.orders>1?'s':''} · ${c.next?`<span style="color:var(--ok)">booked ${esc(dlabel(c.next))}</span>`:c.last?`last event ${esc(dlabel(c.last))} (${d} days ago)`:''}${due?' · <span class="warn">time to follow up</span>':''}</div>
+      <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">${c.phone?`<a class="btn sm" href="sms:${esc(c.phone)}&body=${encodeURIComponent(msg(c))}">Text</a><a class="btn ghost sm" href="tel:${esc(c.phone)}">Call</a>`:''}${c.email?`<a class="btn ghost sm" href="mailto:${esc(c.email)}?subject=${encodeURIComponent('Catering from Buttermilk Biscuit Lab')}&body=${encodeURIComponent(msg(c))}">Email</a>`:''}</div></div>`;}).join('')
+      :'<p class="mut">No online catering orders yet. Customers show up here after they order through the website.</p>';
+  }));
 }
 
 // ---------- Food cost & P&L ----------

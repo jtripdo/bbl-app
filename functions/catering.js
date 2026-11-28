@@ -193,6 +193,12 @@ async function syncEvent(db, order) {
     notes: [`Order #${order.id.slice(-4).toUpperCase()} · paid $${((order.total_money || {}).amount || 0) / 100}`, contact, items.join("\n"), d.note].filter(Boolean).join("\n"),
     catering: true,
     squareOrderId: order.id,
+    contactName: name,
+    contactPhone: (d.recipient && d.recipient.phone_number) || "",
+    contactEmail: (d.recipient && d.recipient.email_address) || "",
+    company: (String(d.note || "").split(" · ").find((x, i) => i >= 2 && !/^DELIVER|^Pickup|people$/i.test(x)) || ""),
+    total: ((order.total_money || {}).amount || 0) / 100,
+    people: Number(meta.people) || 0,
     active: order.state !== "CANCELED",
   };
   if (cur.exists) await ref.update(data);

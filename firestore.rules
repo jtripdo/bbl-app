@@ -27,7 +27,8 @@ service cloud.firestore {
 
     // Public: pop-up calendar on the website, kitchen display screens.
     match /events/{id} {
-      allow read: if true;
+      // Only pop-ups are public (website calendar); catering/private events need a team member.
+      allow read: if resource.data.popup == true || isTeam();
       allow write: if isTeam();
     }
     match /kdsOrders/{id} {
