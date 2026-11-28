@@ -265,7 +265,7 @@ exports.rewards = onRequest({ cors: true }, async (req, res) => {
       default: return res.status(400).json({ error: "Unknown action." });
     }
   } catch (err) {
-    if (err instanceof loyalty.RewardsError || err instanceof mail.MailNotReady) return res.status(400).json({ error: err.message });
+    if (err instanceof loyalty.RewardsError || err instanceof mail.MailNotReady || err instanceof mail.MailOff) return res.status(400).json({ error: err.message });
     logger.error("Rewards failed", { action: b.action, err: err.message });
     return res.status(500).json({ error: "Something went wrong. Please try again." });
   }
@@ -293,10 +293,12 @@ exports.loyaltyAdmin = onRequest({ cors: true }, async (req, res) => {
       case "join": await loyalty.join({ ...b, source: "team" }); return res.json(await loyalty.adminMember(b.phone));
       case "adjust": mgrOnly(); return res.json(await loyalty.adminAdjust(b.phone, b.delta, b.reason, who.name));
       case "broadcast": mgrOnly(); return res.json(await loyalty.adminBroadcast(b.subject, b.message));
+      case "emailGet": return res.json(await loyalty.adminEmailGet());
+      case "emailSet": if (who.role !== "owner") throw new loyalty.RewardsError("Only owners can turn emails on or off."); return res.json(await loyalty.adminEmailSet(b.codes, b.auto, who.name));
       default: return res.status(400).json({ error: "Unknown action." });
     }
   } catch (err) {
-    if (err instanceof loyalty.RewardsError || err instanceof mail.MailNotReady) return res.status(400).json({ error: err.message });
+    if (err instanceof loyalty.RewardsError || err instanceof mail.MailNotReady || err instanceof mail.MailOff) return res.status(400).json({ error: err.message });
     logger.error("Rewards admin failed", { action: b.action, err: err.message });
     return res.status(500).json({ error: "Something went wrong. Please try again." });
   }
@@ -317,7 +319,7 @@ exports.popupAnnounce = onSchedule({ schedule: "every 10 minutes", timeoutSecond
     } catch (err) {
       // Email not set up yet: try again later instead of dropping the announcement.
       if (err instanceof mail.MailNotReady) await d.ref.update({ needsAnnounce: true });
-      else logger.error("Pop-up announce failed", { err: err.message });
+      else if (!(err instanceof mail.MailOff)) logger.error("Pop-up announce failed", { err: err.message });
     }
   }
 });
