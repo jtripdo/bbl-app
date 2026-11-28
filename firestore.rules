@@ -35,6 +35,12 @@ service cloud.firestore {
       allow write: if false; // only the server writes tickets; bump/recall go through kdsAction
     }
 
+    // 86 board: kitchen display shows it (public read); team members change it.
+    match /eighty6/{id} {
+      allow read: if true;
+      allow write: if isTeam();
+    }
+
     // Team app
     match /listItems/{id}   { allow read, write: if isTeam(); }
     match /checks/{id}      { allow read, write: if isTeam(); }

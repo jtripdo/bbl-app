@@ -126,10 +126,35 @@ function buildMenu(objects, locationId) {
 
 async function getMenu(locationId) {
   const hit = cache.get(locationId);
-  if (hit && Date.now() - hit.at < MENU_CACHE_MS) return hit.menu;
-  const menu = buildMenu(await listCatalog(), locationId);
-  cache.set(locationId, { at: Date.now(), menu });
-  return menu;
+  let menu;
+  if (hit && Date.now() - hit.at < MENU_CACHE_MS) menu = hit.menu;
+  else {
+    menu = buildMenu(await listCatalog(), locationId);
+    cache.set(locationId, { at: Date.now(), menu });
+  }
+  return applyEightySix(menu, locationId, await eightySixList());
+}
+
+// 86 board (team app, Firestore "eighty6"): items marked out for today or until turned back on.
+// Applied on top of Square's own sold-out flags, at every location it was 86'd for.
+let e86Cache = { at: 0, list: [] };
+async function eightySixList() {
+  if (Date.now() - e86Cache.at < 10000) return e86Cache.list;
+  try {
+    const { getFirestore } = require("firebase-admin/firestore");
+    const s = await getFirestore().collection("eighty6").get();
+    e86Cache = { at: Date.now(), list: s.docs.map((d) => d.data()) };
+  } catch (e) { /* keep last list */ }
+  return e86Cache.list;
+}
+function applyEightySix(menu, locationId, list) {
+  const now = Date.now();
+  const out = new Set(list.filter((e) => (e.location === "all" || e.location === locationId) && (!e.until || e.until > now)).map((e) => e.itemId));
+  if (!out.size) return menu;
+  return {
+    ...menu,
+    items: menu.items.map((i) => (out.has(i.id) ? { ...i, eightySixed: true, variations: i.variations.map((v) => ({ ...v, soldOut: true })) } : i)),
+  };
 }
 
 // Checks the cart against the real menu and turns it into Square line items.
@@ -307,6 +332,7 @@ async function cancelLink(linkId) {
 }
 
 module.exports = {
+  applyEightySix,
   getMenu, quote, checkout, paymentLink, linkStatus, cancelLink, orderDraft, cleanName,
   buildMenu, buildLineItems, UserError,
 };
