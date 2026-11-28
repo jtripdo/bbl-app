@@ -42,7 +42,7 @@ export function mountRewards(el, opts) {
     if (hasReward || hasCredit) {
       if (st.token) {
         redeem = `${hasReward ? `<label class="ck" style="margin-top:8px"><input type="checkbox" data-usereward ${st.useReward ? "checked" : ""}><span>Use my ${esc(i.rewardName)} (−${i.rewardPoints} points)</span></label>` : ""}
-          ${hasCredit ? `<label class="ck" style="margin-top:8px"><input type="checkbox" data-usecredit ${st.useCredit ? "checked" : ""}><span>Use my ${$$(i.credit)} BBL credit</span></label>` : ""}`;
+          ${hasCredit ? `<label class="ck" style="margin-top:8px"><input type="checkbox" data-usecredit ${st.useCredit ? "checked" : ""}><span>Use my BBL credit <span class="small">(${$$(i.credit)} available · up to $20 or half the order)</span></span></label>` : ""}`;
       } else if (st.codeSent) redeem = `<div class="small" style="margin-top:8px">We emailed a code to ${esc(i.email)}.</div><div class="row"><input inputmode="numeric" maxlength="6" data-code placeholder="6-digit code" autocomplete="one-time-code"><button type="button" class="btn butter" data-verify>Apply</button></div>`;
       else redeem = `<div class="row"><button type="button" class="btn butter" data-send>Use my ${hasReward && hasCredit ? "rewards" : hasReward ? "free biscuit sandwich" : "credit"}</button></div>`;
     }

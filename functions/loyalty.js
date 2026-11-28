@@ -22,6 +22,8 @@ const CREDIT_RATE = 0.15;
 const CREDIT_TIER_MIN = Number(process.env.CREDIT_TIER_MIN || 0);   // e.g. 50000 to turn on a higher rate over $500
 const CREDIT_TIER_RATE = Number(process.env.CREDIT_TIER_RATE || 0.20);
 const CREDIT_MONTHS = 12;
+const CREDIT_PER_ORDER_MAX = 2000;  // $20 per order…
+const CREDIT_PER_ORDER_SHARE = 0.5; // …or half the order, whichever is less
 const CATERING_RE = /cater/i;
 const FN = "https://us-central1-bbl-app-d58e6.cloudfunctions.net/rewards";
 
@@ -236,7 +238,7 @@ async function releaseCredits() {
       await mail.send({ email: m.email, name: m.name }, `You earned ${fmt$(c.amount)} in BBL credit`,
         mail.layout("thanks for catering with us", `<p>Hi ${mail.esc(m.name ? m.name.split(" ")[0] : "there")}, thanks for choosing BBL for your event. Here's <b>${fmt$(c.amount)} in BBL credit</b> (${Math.round(c.rate * 100)}% of your order) to treat yourself.</p>
         <p>Use it at our kiosk, online orders, or any pop-up. Just use your phone number at checkout. It's good for 12 months, until ${new Date(expiresAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}.</p>
-        <p style="color:#7A7064;font-size:13px">Credit can't be used on catering orders, has no cash value, and doesn't cover tax or tip.</p>
+        <p style="color:#7A7064;font-size:13px">Use up to $20 per order (or half the order, whichever is less). Credit can't be used on catering orders, has no cash value, and doesn't cover tax or tip.</p>
         ${mail.button(`${mail.SITE}/popups.html`, "Find a pop-up")}`)).catch(() => {});
     }
   }
@@ -298,7 +300,7 @@ async function forCheckout(loyalty, menu, cart, dryRun) {
     if (hasCatering(menu, cart)) throw new RewardsError("BBL credit can't be used on catering items.");
     const bal = (await creditBalance(p)).cents;
     const sub = cartSubtotal(menu, cart) - rewardCents;
-    const use = Math.min(bal, Math.max(0, sub));
+    const use = Math.min(bal, Math.max(0, sub), CREDIT_PER_ORDER_MAX, Math.floor(Math.max(0, sub) * CREDIT_PER_ORDER_SHARE));
     if (use > 0) {
       out.discounts.push({ uid: "bbl-credit", name: "BBL credit", amount_money: { amount: use, currency: "USD" }, scope: "ORDER" });
       out.metadata.creditUse = String(use);
@@ -530,6 +532,7 @@ async function adminUseCredit(phone, dollars, by) {
   const p = phone10(phone);
   const cents = Math.round(Number(dollars) * 100);
   if (!(cents > 0)) throw new RewardsError("Enter the amount of credit to use.");
+  if (cents > CREDIT_PER_ORDER_MAX) throw new RewardsError(`Credit is limited to ${fmt$(CREDIT_PER_ORDER_MAX)} per order (or half the ticket).`);
   await db().runTransaction(async (t) => {
     const sp = await spendCredit(t, p, cents, "Used at the register", { by });
     if (sp.taken < cents) throw new RewardsError(`They only have ${fmt$(sp.taken)} in credit.`);
